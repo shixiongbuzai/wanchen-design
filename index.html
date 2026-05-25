@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万晨图影设计 — AI 图像服务</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ==================== 全局导航 ==================== -->
+<nav class="nav-bar" id="navBar">
+  <div class="nav-inner">
+    <a href="#home" class="nav-brand" data-nav="home">
+      <span class="brand-dot"></span>
+      <span class="brand-text">万晨图影设计</span>
+    </a>
+    <button class="hamburger" id="hamburgerBtn" aria-label="菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="navLinks">
+      <a href="#home" class="nav-link active" data-nav="home">首页</a>
+      <a href="#portfolio" class="nav-link" data-nav="portfolio">案例作品集</a>
+      <a href="#home#services" class="nav-link" data-nav="services">服务</a>
+      <a href="#home#process" class="nav-link" data-nav="process">流程</a>
+      <a href="#home#contact" class="nav-cta">免费咨询</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ==================== 首页视图 ==================== -->
+<main id="view-home" class="view active">
+
+  <!-- 英雄区 -->
+  <section class="hero">
+    <div class="hero-orb orb-purple"></div>
+    <div class="hero-orb orb-indigo"></div>
+    <div class="hero-orb orb-gold"></div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span> AI 图像服务 · 为需求精准生成
+      </div>
+      <h1 class="hero-title">你描述，我生成。</h1>
+      <p class="hero-subtitle">万晨图影设计，专注为企业与创作者提供高品质 AI 图像生成服务。<br>从电商产品到游戏概念，从出版插画到空间可视化，精准匹配你的需求。</p>
+      <div class="hero-buttons">
+        <a href="#portfolio" class="btn btn-primary">查看案例</a>
+        <a href="#home#contact" class="btn btn-outline">免费咨询</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 客户类型卡片 -->
+  <section class="section" id="services">
+    <div class="section-header">
+      <h2 class="section-title">为谁而生</h2>
+      <p class="section-desc">覆盖四大行业场景，精准匹配你的业务需求</p>
+    </div>
+    <div class="client-cards">
+      <div class="client-card" data-industry="电商品牌">
+        <div class="card-icon">&#128722;</div>
+        <h3>电商品牌</h3>
+        <p>产品渲染、场景合成、模特换装，助力电商视觉升级</p>
+        <span class="card-arrow">查看案例 &rarr;</span>
+      </div>
+      <div class="client-card" data-industry="游戏影视">
+        <div class="card-icon">&#127918;</div>
+        <h3>游戏影视</h3>
+        <p>概念设定、角色设计、氛围图，加速创意落地</p>
+        <span class="card-arrow">查看案例 &rarr;</span>
+      </div>
+      <div class="client-card" data-industry="出版文创">
+        <div class="card-icon">&#128218;</div>
+        <h3>出版文创</h3>
+        <p>艺术风格化、插画生成、封面设计，释放创作灵感</p>
+        <span class="card-arrow">查看案例 &rarr;</span>
+      </div>
+      <div class="client-card" data-industry="空间建筑">
+        <div class="card-icon">&#127963;</div>
+        <h3>空间建筑</h3>
+        <p>室内渲染、建筑可视化、景观概念，所见即所得</p>
+        <span class="card-arrow">查看案例 &rarr;</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 精选案例 -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">精选案例</h2>
+      <p class="section-desc">来自真实客户的 AI 图像交付成果</p>
+    </div>
+    <div class="featured-grid" id="featuredGrid"></div>
+    <div class="section-footer">
+      <a href="#portfolio" class="btn btn-outline">查看全部案例 &rarr;</a>
+    </div>
+  </section>
+
+  <!-- 流程极简条 -->
+  <section class="section" id="process">
+    <div class="section-header">
+      <h2 class="section-title">合作流程</h2>
+      <p class="section-desc">三步完成从需求到交付</p>
+    </div>
+    <div class="process-steps">
+      <div class="process-step">
+        <div class="step-number">01</div>
+        <h4>需求沟通</h4>
+        <p>描述你的想法与参考风格</p>
+      </div>
+      <div class="process-step">
+        <div class="step-number">02</div>
+        <h4>AI 生成与精修</h4>
+        <p>多轮迭代直至满意</p>
+      </div>
+      <div class="process-step">
+        <div class="step-number">03</div>
+        <h4>交付成品</h4>
+        <p>高清原图，多种规格</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="footer" id="contact">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-dot"></span> 万晨图影设计
+      </div>
+      <p class="footer-desc">AI 图像服务 · 为需求精准生成</p>
+      <div class="footer-contact">
+        <span>咨询邮箱：contact@wanchen.design</span>
+        <span>微信：WanChenDesign</span>
+      </div>
+      <p class="footer-copy">&copy; 2026 万晨图影设计. All rights reserved.</p>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== 案例作品集视图 ==================== -->
+<main id="view-portfolio" class="view">
+  <section class="section portfolio-section">
+    <div class="section-header">
+      <h2 class="section-title">案例作品集</h2>
+      <p class="section-desc">浏览全部 AI 图像交付案例</p>
+    </div>
+
+    <!-- 筛选标签 -->
+    <div class="filter-group">
+      <div class="filter-label">行业</div>
+      <div class="filter-tags" id="filterIndustry">
+        <button class="filter-tag active" data-value="all">全部</button>
+        <button class="filter-tag" data-value="电商品牌">电商品牌</button>
+        <button class="filter-tag" data-value="游戏影视">游戏影视</button>
+        <button class="filter-tag" data-value="出版文创">出版文创</button>
+        <button class="filter-tag" data-value="空间建筑">空间建筑</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">需求类型</div>
+      <div class="filter-tags" id="filterType">
+        <button class="filter-tag active" data-value="all">全部</button>
+        <button class="filter-tag" data-value="产品渲染">产品渲染</button>
+        <button class="filter-tag" data-value="概念设定">概念设定</button>
+        <button class="filter-tag" data-value="艺术风格化">艺术风格化</button>
+        <button class="filter-tag" data-value="场景合成">场景合成</button>
+        <button class="filter-tag" data-value="角色设计">角色设计</button>
+      </div>
+    </div>
+
+    <!-- 案例网格 -->
+    <div class="portfolio-grid" id="portfolioGrid"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <p>没有匹配的案例，请调整筛选条件</p>
+    </div>
+  </section>
+</main>
+
+<!-- ==================== 案例详情视图 ==================== -->
+<main id="view-detail" class="view">
+  <div class="detail-back">
+    <a href="#portfolio" class="back-link">&larr; 返回作品集</a>
+  </div>
+  <div id="detailContent"></div>
+</main>
+
+<!-- ==================== 全屏灯箱 ==================== -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-overlay"></div>
+  <div class="lightbox-content">
+    <img id="lightboxImg" src="" alt="">
+    <div class="lightbox-controls">
+      <span class="lightbox-title" id="lightboxTitle"></span>
+      <span class="lightbox-counter" id="lightboxCounter"></span>
+      <a class="lightbox-download" id="lightboxDownload" href="" download>下载</a>
+      <button class="lightbox-close" id="lightboxClose">&times;</button>
+    </div>
+    <button class="lightbox-prev" id="lightboxPrev">&lsaquo;</button>
+    <button class="lightbox-next" id="lightboxNext">&rsaquo;</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
