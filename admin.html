@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>万晨图影设计 · 后台管理</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 后台管理专用样式 */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+            background: #05050f;
+            color: #e0e0e0;
+        }
+
+        /* 左侧案例列表 */
+        .admin-sidebar {
+            width: 320px;
+            background: rgba(10, 10, 20, 0.9);
+            border-right: 1px solid rgba(123, 92, 252, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .admin-sidebar h2 {
+            color: #f0a050;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(123, 92, 252, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .case-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .case-item {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(123, 92, 252, 0.1);
+            border-radius: 8px;
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .case-item:hover {
+            background: rgba(30, 30, 50, 0.8);
+            border-color: rgba(123, 92, 252, 0.3);
+            transform: translateX(5px);
+        }
+
+        .case-item.active {
+            background: rgba(123, 92, 252, 0.15);
+            border-color: rgba(123, 92, 252, 0.5);
+            box-shadow: 0 0 15px rgba(123, 92, 252, 0.2);
+        }
+
+        .case-title {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .case-meta {
+            font-size: 0.85rem;
+            color: #aaa;
+            display: flex;
+            gap: 10px;
+        }
+
+        .case-industry {
+            color: #7b5cfc;
+        }
+
+        .case-type {
+            color: #f0a050;
+        }
+
+        /* 右侧编辑面板 */
+        .admin-main {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(123, 92, 252, 0.2);
+        }
+
+        .admin-header h1 {
+            color: #f0a050;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .back-to-site {
+            background: rgba(123, 92, 252, 0.2);
+            color: #7b5cfc;
+            border: 1px solid rgba(123, 92, 252, 0.4);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-to-site:hover {
+            background: rgba(123, 92, 252, 0.3);
+            box-shadow: 0 0 10px rgba(123, 92, 252, 0.3);
+        }
+
+        /* 编辑表单 */
+        .edit-form {
+            display: grid;
+            gap: 25px;
+        }
+
+        .form-section {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(123, 92, 252, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .form-section h3 {
+            color: #7b5cfc;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid rgba(123, 92, 252, 0.2);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #fff;
+            font-size: 0.95rem;
+            transition: border 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #7b5cfc;
+            box-shadow: 0 0 0 2px rgba(123, 92, 252, 0.2);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* 图片管理 */
+        .image-manager {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .image-item {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            background: rgba(10, 10, 20, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(123, 92, 252, 0.1);
+        }
+
+        .image-inputs {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .image-preview {
+            width: 100px;
+            height: 75px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(123, 92, 252, 0.2);
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7b5cfc, #f0a050);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(123, 92, 252, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(123, 92, 252, 0.2);
+            color: #7b5cfc;
+            border: 1px solid rgba(123, 92, 252, 0.4);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(123, 92, 252, 0.3);
+        }
+
+        .btn-danger {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .add-btn {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.4);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-btn:hover {
+            background: rgba(40, 167, 69, 0.3);
+        }
+
+        /* 底部操作栏 */
+        .admin-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(123, 92, 252, 0.2);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .admin-container {
+                flex-direction: column;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-item {
+                flex-direction: column;
+            }
+            
+            .image-preview {
+                width: 100%;
+                height: 150px;
+            }
+        }
+
+        /* 标签输入 */
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid rgba(123, 92, 252, 0.2);
+            border-radius: 6px;
+            min-height: 50px;
+        }
+
+        .tag {
+            background: rgba(123, 92, 252, 0.2);
+            color: #7b5cfc;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .tag-input {
+            flex: 1;
+            min-width: 100px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 0;
+        }
+
+        .tag-input:focus {
+            outline: none;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            color: #888;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- 左侧案例列表 -->
+        <div class="admin-sidebar">
+            <h2>案例列表</h2>
+            <div class="case-list" id="caseList">
+                <!-- 案例项将通过JS动态生成 -->
+            </div>
+            <div class="empty-state" id="emptyCaseList" style="display: none;">
+                <h3>暂无案例</h3>
+                <p>点击下方按钮添加第一个案例</p>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" id="addCaseBtn" style="width: 100%;">
+                    + 新增案例
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧编辑面板 -->
+        <div class="admin-main">
+            <div class="admin-header">
+                <h1>万晨图影设计 · 后台管理</h1>
+                <a href="index.html" class="back-to-site">返回网站</a>
+            </div>
+
+            <div id="editorPanel" style="display: none;">
+                <form class="edit-form" id="caseForm">
+                    <!-- 基本信息 -->
+                    <div class="form-section">
+                        <h3>基本信息</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="title">标题 *</label>
+                                <input type="text" id="title" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="industry">行业 *</label>
+                                <select id="industry" name="industry" required>
+                                    <option value="">请选择行业</option>
+                                    <option value="电商产品">电商产品</option>
+                                    <option value="游戏动漫">游戏动漫</option>
+                                    <option value="品牌设计">品牌设计</option>
+                                    <option value="文创插画">文创插画</option>
+                                    <option value="建筑空间">建筑空间</option>
+                                    <option value="时尚服装">时尚服装</option>
+                                    <option value="餐饮食品">餐饮食品</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="type">需求类型 *</label>
+                                <select id="type" name="type" required>
+                                    <option value="">请选择需求类型</option>
+                                    <option value="产品渲染">产品渲染</option>
+                                    <option value="概念设定">概念设定</option>
+                                    <option value="场景合成">场景合成</option>
+                                    <option value="角色设计">角色设计</option>
+                                    <option value="艺术风格化">艺术风格化</option>
+                                    <option value="包装展示">包装展示</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="client">客户名</label>
+                                <input type="text" id="client" name="client">
+                            </div>
+                            <div class="form-group">
+                                <label for="deliverable">交付规格</label>
+                                <input type="text" id="deliverable" name="deliverable">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 需求描述 -->
+                    <div class="form-section">
+                        <h3>需求描述</h3>
+                        <div class="form-group full-width">
+                            <textarea id="description" name="description" placeholder="详细描述客户需求、项目背景和解决方案..." rows="5"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 过程图管理 -->
+                    <div class="form-section">
+                        <h3>过程图管理</h3>
+                        <div class="image-manager" id="processImagesContainer">
+                            <!-- 过程图项将通过JS动态生成 -->
+                        </div>
+                        <button type="button" class="add-btn" id="addProcessImageBtn" style="margin-top: 10px;">
+                            + 添加过程图
+                        </button>
+                    </div>
+
+                    <!-- 最终成果图管理 -->
+                    <div class="form-section">
+                        <h3>最终成果图管理</h3>
+                        <div class="image-manager" id="finalImagesContainer">
+                            <!-- 最终成果图项将通过JS动态生成 -->
+                        </div>
+                        <button type="button" class="add-btn" id="addFinalImageBtn" style="margin-top: 10px;">
+                            + 添加成果图
+                        </button>
+                    </div>
+
+                    <!-- 客户评价 -->
+                    <div class="form-section">
+                        <h3>客户评价（可选）</h3>
+                        <div class="form-group full-width">
+                            <textarea id="testimonial" name="testimonial" placeholder="客户的评价反馈..." rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 标签 -->
+                    <div class="form-section">
+                        <h3>标签</h3>
+                        <div class="form-group full-width">
+                            <div class="tags-input" id="tagsContainer">
+                                <!-- 标签将通过JS动态生成 -->
+                                <input type="text" class="tag-input" id="tagInput" placeholder="输入标签后按回车添加">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 底部操作栏 -->
+                    <div class="admin-footer">
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">
+                                💾 保存修改
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="exportBtn">
+                                📥 导出数据
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="importBtn">
+                                📤 导入数据
+                            </button>
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-danger" id="deleteCaseBtn">
+                                🗑️ 删除案例
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div id="emptyEditor" class="empty-state">
+                <h3>请从左侧选择一个案例进行编辑</h3>
+                <p>或点击"新增案例"按钮创建新案例</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件上传输入（隐藏） -->
+    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+    <script src="app.js"></script>
+    <script>
+        // 后台管理逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const caseList = document.getElementById('caseList');
+            const emptyCaseList = document.getElementById('emptyCaseList');
+            const editorPanel = document.getElementById('editorPanel');
+            const emptyEditor = document.getElementById('emptyEditor');
+            const caseForm = document.getElementById('caseForm');
+            const addCaseBtn = document.getElementById('addCaseBtn');
+            const deleteCaseBtn = document.getElementById('deleteCaseBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const importBtn = document.getElementById('importBtn');
+            const importFileInput = document.getElementById('importFileInput');
+            const processImagesContainer = document.getElementById('processImagesContainer');
+            const finalImagesContainer = document.getElementById('finalImagesContainer');
+            const addProcessImageBtn = document.getElementById('addProcessImageBtn');
+            const addFinalImageBtn = document.getElementById('addFinalImageBtn');
+            const tagsContainer = document.getElementById('tagsContainer');
+            const tagInput = document.getElementById('tagInput');
+
+            let currentCaseId = null;
+            let casesData = [];
+
+            // 初始化：从localStorage或默认数据加载
+            function init() {
+                const savedData = localStorage.getItem('wanchen_cases_data');
+                if (savedData) {
+                    try {
+                        casesData = JSON.parse(savedData);
+                        console.log('从localStorage加载数据，共', casesData.length, '个案例');
+                    } catch (e) {
+                        console.error('解析localStorage数据失败，使用默认数据', e);
+                        casesData = window.casesData || [];
+                    }
+                } else {
+                    console.log('localStorage无数据，使用默认数据');
+                    casesData = window.casesData || [];
+                }
+                
+                renderCaseList();
+            }
+
+            // 渲染案例列表
+            function renderCaseList() {
+                caseList.innerHTML = '';
+                
+                if (casesData.length === 0) {
+                    emptyCaseList.style.display = 'block';
+                    caseList.style.display = 'none';
+                } else {
+                    emptyCaseList.style.display = 'none';
+                    caseList.style.display = 'flex';
+                    
+                    casesData.forEach(caseItem => {
+                        const caseElement = document.createElement('div');
+                        caseElement.className = 'case-item';
+                        if (currentCaseId === caseItem.id) {
+                            caseElement.classList.add('active');
+                        }
+                        
+                        caseElement.innerHTML = `
+                            <div class="case-title">${caseItem.title}</div>
+                            <div class="case-meta">
+                                <span class="case-industry">${caseItem.industry}</span>
+                                <span class="case-type">${caseItem.type}</span>
+                                <span>ID: ${caseItem.id}</span>
+                            </div>
+                        `;
+                        
+                        caseElement.addEventListener('click', () => {
+                            selectCase(caseItem.id);
+                        });
+                        
+                        caseList.appendChild(caseElement);
+                    });
+                }
+            }
+
+            // 选择案例
+            function selectCase(caseId) {
+                currentCaseId = caseId;
+                const caseItem = casesData.find(c => c.id === caseId);
+                
+                if (caseItem) {
+                    // 更新表单
+                    document.getElementById('title').value = caseItem.title || '';
+                    document.getElementById('industry').value = caseItem.industry || '';
+                    document.getElementById('type').value = caseItem.type || '';
+                    document.getElementById('client').value = caseItem.client || '';
+                    document.getElementById('deliverable').value = caseItem.deliverable || '';
+                    document.getElementById('description').value = caseItem.description || '';
+                    document.getElementById('testimonial').value = caseItem.testimonial || '';
+                    
+                    // 渲染过程图
+                    renderProcessImages(caseItem.processImages || []);
+                    
+                    // 渲染最终成果图
+                    renderFinalImages(caseItem.finalImages || []);
+                    
+                    // 渲染标签
+                    renderTags(caseItem.tags || []);
+                    
+                    // 显示编辑面板
+                    editorPanel.style.display = 'block';
+                    emptyEditor.style.display = 'none';
+                    
+                    // 更新列表选中状态
+                    renderCaseList();
+                }
+            }
+
+            // 渲染过程图
+            function renderProcessImages(images) {
+                processImagesContainer.innerHTML = '';
+                
+                images.forEach((image, index) => {
+                    const imageElement = document.createElement('div');
+                    imageElement.className = 'image-item';
+                    imageElement.innerHTML = `
+                        <div class="image-preview">
+                            <img src="${image.src}" alt="${image.label || '过程图'}" onerror="this.src='https://placehold.co/100x75/1a1a2e/7b5cfc?text=图片加载失败'">
+                        </div>
+                        <div class="image-inputs">
+                            <input type="text" class="process-image-url" data-index="${index}" 
+                                   placeholder="图片URL" value="${image.src || ''}">
+                            <input type="text" class="process-image-label" data-index="${index}" 
+                                   placeholder="图片标签" value="${image.label || ''}">
+                        </div>
+                        <div class="image-actions">
+                            <button type="button" class="btn btn-danger btn-small remove-process-image" data-index="${index}">
+                                删除
+                            </button>
+                        </div>
+                    `;
+                    processImagesContainer.appendChild(imageElement);
+                });
+                
+                // 绑定删除事件
+                document.querySelectorAll('.remove-process-image').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        removeProcessImage(index);
+                    });
+                });
+                
+                // 绑定URL输入事件（实时预览）
+                document.querySelectorAll('.process-image-url').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        const img = this.closest('.image-item').querySelector('img');
+                        img.src = this.value || 'https://placehold.co/100x75/1a1a2e/7b5cfc?text=图片URL';
+                    });
+                });
+            }
+
+            // 渲染最终成果图
+            function renderFinalImages(images) {
+                finalImagesContainer.innerHTML = '';
+                
+                images.forEach((image, index) => {
+                    const imageElement = document.createElement('div');
+                    imageElement.className = 'image-item';
+                    imageElement.innerHTML = `
+                        <div class="image-preview">
+                            <img src="${image}" alt="成果图" onerror="this.src='https://placehold.co/100x75/1a1a2e/f0a050?text=图片加载失败'">
+                        </div>
+                        <div class="image-inputs">
+                            <input type="text" class="final-image-url" data-index="${index}" 
+                                   placeholder="图片URL" value="${image || ''}">
+                        </div>
+                        <div class="image-actions">
+                            <button type="button" class="btn btn-danger btn-small remove-final-image" data-index="${index}">
+                                删除
+                            </button>
+                        </div>
+                    `;
+                    finalImagesContainer.appendChild(imageElement);
+                });
+                
+                // 绑定删除事件
+                document.querySelectorAll('.remove-final-image').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        removeFinalImage(index);
+                    });
+                });
+                
+                // 绑定URL输入事件（实时预览）
+                document.querySelectorAll('.final-image-url').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        const img = this.closest('.image-item').querySelector('img');
+                        img.src = this.value || 'https://placehold.co/100x75/1a1a2e/f0a050?text=图片URL';
+                    });
+                });
+            }
+
+            // 渲染标签
+            function renderTags(tags) {
+                tagsContainer.innerHTML = '';
+                
+                tags.forEach((tag, index) => {
+                    const tagElement = document.createElement('span');
+                    tagElement.className = 'tag';
+                    tagElement.innerHTML = `
+                        ${tag}
+                        <span class="tag-remove" data-index="${index}">×</span>
+                    `;
+                    tagsContainer.appendChild(tagElement);
+                });
+                
+                // 添加输入框
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'tag-input';
+                input.id = 'tagInput';
+                input.placeholder = '输入标签后按回车添加';
+                tagsContainer.appendChild(input);
+                
+                // 绑定删除事件
+                document.querySelectorAll('.tag-remove').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        removeTag(index);
+                    });
+                });
+                
+                // 绑定输入事件
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && this.value.trim()) {
+                        e.preventDefault();
+                        addTag(this.value.trim());
+                        this.value = '';
+                    }
+                });
+            }
+
+            // 添加过程图
+            addProcessImageBtn.addEventListener('click', function() {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem) {
+                    if (!caseItem.processImages) caseItem.processImages = [];
+                    caseItem.processImages.push({
+                        src: 'https://placehold.co/800x600/1a1a2e/7b5cfc?text=新过程图',
+                        label: '新过程图'
+                    });
+                    renderProcessImages(caseItem.processImages);
+                }
+            });
+
+            // 添加最终成果图
+            addFinalImageBtn.addEventListener('click', function() {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem) {
+                    if (!caseItem.finalImages) caseItem.finalImages = [];
+                    caseItem.finalImages.push('https://placehold.co/800x800/0a0a1e/f0a050?text=新成果图');
+                    renderFinalImages(caseItem.finalImages);
+                }
+            });
+
+            // 删除过程图
+            function removeProcessImage(index) {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem && caseItem.processImages) {
+                    caseItem.processImages.splice(index, 1);
+                    renderProcessImages(caseItem.processImages);
+                }
+            }
+
+            // 删除最终成果图
+            function removeFinalImage(index) {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem && caseItem.finalImages) {
+                    caseItem.finalImages.splice(index, 1);
+                    renderFinalImages(caseItem.finalImages);
+                }
+            }
+
+            // 添加标签
+            function addTag(tag) {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem) {
+                    if (!caseItem.tags) caseItem.tags = [];
+                    if (!caseItem.tags.includes(tag)) {
+                        caseItem.tags.push(tag);
+                        renderTags(caseItem.tags);
+                    }
+                }
+            }
+
+            // 删除标签
+            function removeTag(index) {
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (caseItem && caseItem.tags) {
+                    caseItem.tags.splice(index, 1);
+                    renderTags(caseItem.tags);
+                }
+            }
+
+            // 表单提交（保存修改）
+            caseForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const caseItem = casesData.find(c => c.id === currentCaseId);
+                if (!caseItem) return;
+                
+                // 更新基本信息
+                caseItem.title = document.getElementById('title').value;
+                caseItem.industry = document.getElementById('industry').value;
+                caseItem.type = document.getElementById('type').value;
+                caseItem.client = document.getElementById('client').value;
+                caseItem.deliverable = document.getElementById('deliverable').value;
+                caseItem.description = document.getElementById('description').value;
+                caseItem.testimonial = document.getElementById('testimonial').value;
+                
+                // 更新过程图
+                const processImages = [];
+                document.querySelectorAll('.process-image-url').forEach((input, index) => {
+                    const url = input.value;
+                    const labelInput = document.querySelector(`.process-image-label[data-index="${index}"]`);
+                    const label = labelInput ? labelInput.value : '';
+                    if (url) {
+                        processImages.push({ src: url, label });
+                    }
+                });
+                caseItem.processImages = processImages;
+                
+                // 更新最终成果图
+                const finalImages = [];
+                document.querySelectorAll('.final-image-url').forEach(input => {
+                    if (input.value) {
+                        finalImages.push(input.value);
+                    }
+                });
+                caseItem.finalImages = finalImages;
+                
+                // 更新标签
+                const tags = [];
+                document.querySelectorAll('.tag').forEach(tag => {
+                    const text = tag.textContent.replace('×', '').trim();
+                    if (text) {
+                        tags.push(text);
+                    }
+                });
+                caseItem.tags = tags;
+                
+                // 保存到localStorage
+                saveToLocalStorage();
+                
+                // 更新列表
+                renderCaseList();
+                
+                alert('保存成功！');
+            });
+
+            // 新增案例
+            addCaseBtn.addEventListener('click', function() {
+                const newId = casesData.length > 0 ? Math.max(...casesData.map(c => c.id)) + 1 : 1;
+                
+                const newCase = {
+                    id: newId,
+                    title: '新案例',
+                    industry: '电商产品',
+                    type: '产品渲染',
+                    client: '',
+                    description: '',
+                    processImages: [],
+                    finalImages: [],
+                    testimonial: '',
+                    deliverable: '',
+                    tags: []
+                };
+                
+                casesData.push(newCase);
+                saveToLocalStorage();
+                selectCase(newId);
+                renderCaseList();
+            });
+
+            // 删除案例
+            deleteCaseBtn.addEventListener('click', function() {
+                if (!currentCaseId) return;
+                
+                if (confirm('确定要删除这个案例吗？此操作不可恢复。')) {
+                    const index = casesData.findIndex(c => c.id === currentCaseId);
+                    if (index !== -1) {
+                        casesData.splice(index, 1);
+                        saveToLocalStorage();
+                        currentCaseId = null;
+                        editorPanel.style.display = 'none';
+                        emptyEditor.style.display = 'block';
+                        renderCaseList();
+                        alert('案例已删除');
+                    }
+                }
+            });
+
+            // 导出数据
+            exportBtn.addEventListener('click', function() {
+                const dataStr = JSON.stringify(casesData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `wanchen_cases_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // 导入数据
+            importBtn.addEventListener('click', function() {
+                importFileInput.click();
+            });
+
+            importFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (Array.isArray(importedData)) {
+                            if (confirm(`导入 ${importedData.length} 个案例，将覆盖现有数据。确定继续？`)) {
+                                casesData = importedData;
+                                saveToLocalStorage();
+                                currentCaseId = null;
+                                editorPanel.style.display = 'none';
+                                emptyEditor.style.display = 'block';
+                                renderCaseList();
+                                alert('数据导入成功！');
+                            }
+                        } else {
+                            alert('导入失败：数据格式不正确');
+                        }
+                    } catch (error) {
+                        alert('导入失败：' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+                this.value = ''; // 重置文件输入
+            });
+
+            // 保存到localStorage
+            function saveToLocalStorage() {
+                localStorage.setItem('wanchen_cases_data', JSON.stringify(casesData));
+            }
+
+            // 初始化
+            init();
+        });
+    </script>
+</body>
+</html>

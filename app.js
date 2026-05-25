@@ -6,7 +6,7 @@
    案例数据
    覆盖 5 种类型，每种至少 2 个，共计 10+ 个案例
    ============================================================ */
-const casesData = [
+let casesData = [
   // === 产品渲染 (2个) ===
   {
     id: 1,
@@ -275,6 +275,28 @@ const casesData = [
     tags: ["景观设计", "城市规划", "公园", "概念方案"]
   }
 ];
+
+/* ============================================================
+   数据持久化：启动时优先从 localStorage 读取
+   ============================================================ */
+(function initData() {
+  const savedData = localStorage.getItem('wanchen_cases_data');
+  if (savedData) {
+    try {
+      const parsed = JSON.parse(savedData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log('从 localStorage 加载数据，共', parsed.length, '个案例');
+        casesData = parsed;
+      } else {
+        console.log('localStorage 数据为空或格式错误，使用默认数据');
+      }
+    } catch (e) {
+      console.error('解析 localStorage 数据失败，使用默认数据:', e);
+    }
+  } else {
+    console.log('localStorage 无数据，使用默认数据');
+  }
+})();
 
 /* ============================================================
    Hash 路由系统
