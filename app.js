@@ -101,37 +101,25 @@ function setSyncStatus(status) {
 
 /* ===== 同步触发 ===== */
 
-let syncDebounceTimer = null;
+let saveDebounceTimer = null;
 
-function triggerAutoSync() {
+function triggerAutoSave() {
   if (!AUTH.isLoggedIn()) return;
 
-  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
-  syncDebounceTimer = setTimeout(async () => {
-    setSyncStatus(SyncStatus.SYNCING);
-    const result = await sync();
-    if (result.success) {
-      const raw = localStorage.getItem("promptLibrary");
-      if (raw) {
-        try { works = JSON.parse(raw); } catch (e) {}
-      }
-      setSyncStatus(SyncStatus.SYNCED);
-      refreshAll();
-    } else {
-      setSyncStatus(SyncStatus.FAILED);
-      console.error("自动同步失败:", result.error);
-    }
+  if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(async () => {
+    upload();
   }, 1500);
 }
 
-async function manualSync() {
+async function manualRestore() {
   if (!AUTH.isLoggedIn()) {
-    showToast("请先登录后再同步");
+    showToast("请先登录后再下载");
     return;
   }
 
   setSyncStatus(SyncStatus.SYNCING);
-  const result = await sync();
+  const result = await restore();
   if (result.success) {
     const raw = localStorage.getItem("promptLibrary");
     if (raw) {
@@ -139,10 +127,10 @@ async function manualSync() {
     }
     setSyncStatus(SyncStatus.SYNCED);
     refreshAll();
-    showToast("同步完成");
+    showToast(`已从云端恢复 ${result.count || 0} 条记录`);
   } else {
     setSyncStatus(SyncStatus.FAILED);
-    showToast("同步失败：" + result.error);
+    showToast("下载失败：" + result.error);
   }
 }
 
@@ -204,12 +192,13 @@ function loadData() {
     works = JSON.parse(JSON.stringify(DEFAULT_WORKS));
     saveData();
   }
+  console.log("loadData: works count =", works.length);
 }
 
 function saveData() {
   localStorage.setItem("promptLibrary", JSON.stringify(works));
   updateStorageStats();
-  triggerAutoSync();
+  triggerAutoSave();
 }
 
 /* ===== Toast 提示 ===== */
@@ -360,12 +349,24 @@ function copyPrompt(text, iconEl) {
 
 /* ===== 删除操作 ===== */
 
-function deleteWork(workId) {
+async function deleteWork(workId) {
   const work = works.find(w => w.id === workId);
   if (!work) return;
   if (!confirm("确定要删除这个作品吗？此操作不可撤销。")) return;
   works = works.filter(w => w.id !== workId);
   saveData();
+  // 清除防抖，立即同步到 GitHub
+  if (saveDebounceTimer) { clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
+  if (AUTH.isLoggedIn()) {
+    try {
+      setSyncStatus(SyncStatus.SYNCING);
+      await upload();
+      setSyncStatus(SyncStatus.SYNCED);
+    } catch (e) {
+      setSyncStatus(SyncStatus.FAILED);
+      console.error("删除同步失败:", e);
+    }
+  }
   refreshAll();
   showToast("作品已删除");
   const detailModal = document.getElementById("detailModal");
@@ -644,7 +645,7 @@ function updateAccountUI() {
 
 document.getElementById("syncStatusBtn").addEventListener("click", function() {
   if (!AUTH.isLoggedIn()) openLoginModal();
-  else manualSync();
+  else manualRestore();
 });
 
 setupNetworkListeners(
