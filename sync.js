@@ -1,121 +1,114 @@
 /**
- * sync.js - Supabase 同步逻辑
- * 环境变量通过 window.SUPABASE_CONFIG 注入，用户需在 config.js 中填写自己的配置
+ * sync.js - GitHub API 同步逻辑
+ * 通过 GitHub API 读写仓库中的 data.json，实现跨设备同步
+ * 仓库：shixiongbuzai/wanchen-design，分支：master，文件路径：data.json
  */
 
-const SYNC_CONFIG = {
-  // 用户需在 index.html 前引入 config.js 并设置 window.SUPABASE_CONFIG
-  // 格式：{ url: 'https://xxx.supabase.co', anonKey: 'eyJ...' }
+const GITHUB_CONFIG = {
+  token: "ghp_I0JynBUGUNWvYAH4bmMbsLS9w17GeE02CIyY",
+  owner: "shixiongbuzai",
+  repo: "wanchen-design",
+  branch: "master",
+  filePath: "data.json",
 };
 
-let supabaseClient = null;
 let syncInProgress = false;
 
 /**
- * 初始化 Supabase 客户端
- */
-function initSupabase() {
-  const cfg = window.SUPABASE_CONFIG;
-  if (!cfg || !cfg.url || !cfg.anonKey) {
-    console.warn("Supabase 配置未找到，同步功能不可用");
-    return false;
-  }
-  try {
-    supabaseClient = supabase.createClient(cfg.url, cfg.anonKey);
-    return true;
-  } catch (e) {
-    console.error("Supabase 初始化失败:", e);
-    return false;
-  }
-}
-
-/**
- * 获取当前用户 ID（登录时由 AUTH 模块生成并存入 localStorage）
+ * 获取当前用户 ID
  */
 function getUserId() {
   return localStorage.getItem("promptLibraryUserId") || null;
 }
 
 /**
- * 从 Supabase 拉取云端数据
- * 返回：{ success, data, error }
+ * 获取 GitHub API 读取 URL
+ */
+function getGitHubApiUrl() {
+  const { owner, repo, filePath, branch } = GITHUB_CONFIG;
+  return `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
+}
+
+/**
+ * 获取 GitHub API 提交 URL（PUT 用）
+ */
+function getGitHubCommitUrl() {
+  const { owner, repo, filePath } = GITHUB_CONFIG;
+  return `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+}
+
+/**
+ * 从 GitHub 读取 data.json
+ * 返回：{ success, data, sha, error }
  */
 async function pullFromCloud() {
-  const userId = getUserId();
-  if (!userId || !supabaseClient) {
-    return { success: false, error: "未登录或 Supabase 未初始化" };
-  }
-
   try {
-    const { data, error } = await supabaseClient
-      .from("works")
-      .select("*")
-      .eq("user_id", userId)
-      .order("last_modified", { ascending: false });
+    const url = getGitHubApiUrl();
+    const resp = await fetch(url, {
+      headers: {
+        "Authorization": `token ${GITHUB_CONFIG.token}`,
+        "Accept": "application/vnd.github.v3+json",
+      },
+    });
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (resp.status === 404) {
+      // 文件不存在，返回空数组
+      return { success: true, data: [], sha: null };
+    }
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`GitHub API 错误 ${resp.status}: ${errText}`);
+    }
+
+    const result = await resp.json();
+    const sha = result.sha;
+    const content = atob(result.content.replace(/\n/g, ""));
+    const data = JSON.parse(content);
+
+    return { success: true, data: data || [], sha };
   } catch (e) {
-    console.error("拉取失败:", e);
+    console.error("从 GitHub 拉取失败:", e);
     return { success: false, error: e.message };
   }
 }
 
 /**
- * 将本地数据推送到 Supabase
- * 策略：全量 upsert（按 id + userId 唯一约束）
+ * 将合并后的数据推送到 GitHub
  * 返回：{ success, error }
  */
-async function pushToCloud(works) {
-  const userId = getUserId();
-  if (!userId || !supabaseClient) {
-    return { success: false, error: "未登录或 Supabase 未初始化" };
-  }
-
-  if (!works || works.length === 0) {
-    return { success: true };
-  }
-
-  const now = new Date().toISOString();
-  const records = works.map(w => ({
-    id: w.id,
-    user_id: userId,
-    image_url: w.imageUrl || "",
-    prompt: w.prompt || "",
-    tags: w.tags || [],
-    note: w.note || "",
-    created_at: w.createdAt || now,
-    last_modified: now,
-  }));
-
+async function pushToCloud(data, sha) {
   try {
-    // 先删除云端已不存在的本地记录
-    const { data: existing } = await supabaseClient
-      .from("works")
-      .select("id")
-      .eq("user_id", userId);
+    const url = getGitHubCommitUrl();
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body = {
+      message: "同步更新 data.json",
+      content: content,
+      branch: GITHUB_CONFIG.branch,
+    };
 
-    const existingIds = (existing || []).map(r => r.id);
-    const localIds = works.map(w => w.id);
-    const toDelete = existingIds.filter(id => !localIds.includes(id));
-
-    if (toDelete.length > 0) {
-      await supabaseClient
-        .from("works")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", toDelete);
+    if (sha) {
+      body.sha = sha;
     }
 
-    // Upsert 本地数据
-    const { error } = await supabaseClient
-      .from("works")
-      .upsert(records, { onConflict: "id,user_id" });
+    const resp = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Authorization": `token ${GITHUB_CONFIG.token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-    if (error) throw error;
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`GitHub API 错误 ${resp.status}: ${errText}`);
+    }
+
     return { success: true };
   } catch (e) {
-    console.error("推送失败:", e);
+    console.error("推送到 GitHub 失败:", e);
     return { success: false, error: e.message };
   }
 }
@@ -130,25 +123,18 @@ async function sync() {
   syncInProgress = true;
 
   const userId = getUserId();
-  if (!userId || !supabaseClient) {
+  if (!userId) {
     syncInProgress = false;
-    return { success: false, error: "未登录或 Supabase 未初始化" };
+    return { success: false, error: "未登录" };
   }
 
   try {
-    // 1. 拉取云端
+    // 1. 从 GitHub 拉取
     const pullResult = await pullFromCloud();
     if (!pullResult.success) throw new Error(pullResult.error);
 
-    const cloudWorks = (pullResult.data || []).map(r => ({
-      id: r.id,
-      imageUrl: r.image_url,
-      prompt: r.prompt,
-      tags: r.tags || [],
-      note: r.note || "",
-      createdAt: r.created_at,
-      lastModified: r.last_modified,
-    }));
+    const cloudWorks = pullResult.data || [];
+    const sha = pullResult.sha;
 
     // 2. 读取本地
     const localRaw = localStorage.getItem("promptLibrary");
@@ -184,8 +170,8 @@ async function sync() {
     // 4. 更新本地
     localStorage.setItem("promptLibrary", JSON.stringify(merged));
 
-    // 5. 推送合并结果到云端
-    const pushResult = await pushToCloud(merged);
+    // 5. 推送到 GitHub
+    const pushResult = await pushToCloud(merged, sha);
     if (!pushResult.success) throw new Error(pushResult.error);
 
     syncInProgress = false;
@@ -217,18 +203,8 @@ function setupNetworkListeners(onOnline, onOffline) {
 }
 
 /**
- * 登录后初始化同步：配置 Supabase → 拉取云端 → 合并 → 推送
- * 用户需先在 index.html 的 window.SUPABASE_CONFIG 中填入 project URL 和 anon key
+ * 初始化同步：拉取云端 → 合并 → 推送
  */
 async function initSync() {
-  if (!window.SUPABASE_CONFIG || !window.SUPABASE_CONFIG.url || !window.SUPABASE_CONFIG.anonKey) {
-    console.warn("Supabase 未配置，跳过同步");
-    return { success: false, error: "Supabase 未配置" };
-  }
-
-  if (!initSupabase()) {
-    return { success: false, error: "Supabase 客户端初始化失败" };
-  }
-
   return await sync();
 }

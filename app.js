@@ -60,15 +60,11 @@ function updateSyncStatusIcon() {
     statusClass = "sync-offline";
     title = "离线";
     currentSyncStatus = SyncStatus.OFFLINE;
-  } else if (!supabaseClient || !AUTH.getUserId()) {
+  } else if (!AUTH.getUserId()) {
     if (!AUTH.isLoggedIn()) {
       statusClass = "sync-not-logged-in";
       title = "未登录";
       currentSyncStatus = SyncStatus.NOT_LOGGED_IN;
-    } else if (!window.SUPABASE_CONFIG || !window.SUPABASE_CONFIG.url) {
-      statusClass = "sync-not-logged-in";
-      title = "未配置 Supabase";
-      currentSyncStatus = SyncStatus.NOT_CONFIGURED;
     } else {
       statusClass = "sync-not-logged-in";
       title = "同步不可用";
@@ -109,7 +105,6 @@ let syncDebounceTimer = null;
 
 function triggerAutoSync() {
   if (!AUTH.isLoggedIn()) return;
-  if (!supabaseClient) return;
 
   if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(async () => {
@@ -132,10 +127,6 @@ function triggerAutoSync() {
 async function manualSync() {
   if (!AUTH.isLoggedIn()) {
     showToast("请先登录后再同步");
-    return;
-  }
-  if (!supabaseClient) {
-    showToast("请在 sync.js 中配置 Supabase（project URL 和 anon key）");
     return;
   }
 
@@ -653,7 +644,6 @@ function updateAccountUI() {
 
 document.getElementById("syncStatusBtn").addEventListener("click", function() {
   if (!AUTH.isLoggedIn()) openLoginModal();
-  else if (!window.SUPABASE_CONFIG || !window.SUPABASE_CONFIG.url) showToast("请在 sync.js 中配置 Supabase");
   else manualSync();
 });
 
