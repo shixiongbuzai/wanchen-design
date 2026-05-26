@@ -45,6 +45,7 @@ const SyncStatus = {
 };
 
 let currentSyncStatus = SyncStatus.NOT_LOGGED_IN;
+let syncInProgress = false;
 
 function updateSyncStatusIcon() {
   const btn = document.getElementById("syncStatusBtn");
@@ -108,7 +109,17 @@ function triggerAutoSave() {
 
   if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
   saveDebounceTimer = setTimeout(async () => {
-    upload();
+    try {
+      syncInProgress = true;
+      setSyncStatus(SyncStatus.SYNCING);
+      await upload();
+      setSyncStatus(SyncStatus.SYNCED);
+    } catch (e) {
+      console.error("自动保存失败:", e);
+      setSyncStatus(SyncStatus.FAILED);
+    } finally {
+      syncInProgress = false;
+    }
   }, 1500);
 }
 
@@ -118,19 +129,27 @@ async function manualRestore() {
     return;
   }
 
+  syncInProgress = true;
   setSyncStatus(SyncStatus.SYNCING);
-  const result = await restore();
-  if (result.success) {
-    const raw = localStorage.getItem("promptLibrary");
-    if (raw) {
-      try { works = JSON.parse(raw); } catch (e) {}
+  try {
+    const result = await restore();
+    if (result.success) {
+      const raw = localStorage.getItem("promptLibrary");
+      if (raw) {
+        try { works = JSON.parse(raw); } catch (e) {}
+      }
+      setSyncStatus(SyncStatus.SYNCED);
+      refreshAll();
+      showToast(`已从云端恢复 ${result.count || 0} 条记录`);
+    } else {
+      setSyncStatus(SyncStatus.FAILED);
+      showToast("下载失败：" + result.error);
     }
-    setSyncStatus(SyncStatus.SYNCED);
-    refreshAll();
-    showToast(`已从云端恢复 ${result.count || 0} 条记录`);
-  } else {
+  } catch (e) {
     setSyncStatus(SyncStatus.FAILED);
-    showToast("下载失败：" + result.error);
+    showToast("下载异常：" + e.message);
+  } finally {
+    syncInProgress = false;
   }
 }
 
@@ -143,7 +162,8 @@ const DEFAULT_WORKS = [
     prompt: "A breathtaking futuristic cyberpunk city at night, neon lights reflecting on wet streets, flying cars cruising between towering skyscrapers, photo-realistic, 8K ultra HD, cinematic lighting, volumetric fog, ray tracing, highly detailed",
     tags: ["赛博朋克", "夜景", "未来城市"],
     note: "适合做科幻主题壁纸，搭配霓虹色调效果更佳",
-    createdAt: "2024-05-24T12:00:00.000Z"
+    createdAt: "2024-05-24T12:00:00.000Z",
+    lastModified: "2024-05-24T12:00:00.000Z"
   },
   {
     id: 1716652800000,
@@ -151,7 +171,8 @@ const DEFAULT_WORKS = [
     prompt: "Epic mountain landscape at golden hour, majestic peaks with snow caps, crystal clear lake reflecting the mountains, warm sunlight rays breaking through clouds, National Geographic style, award-winning nature photography",
     tags: ["风景", "自然", "山"],
     note: "强调黄金时段的暖色调，适合风景类生成",
-    createdAt: "2024-05-25T12:00:00.000Z"
+    createdAt: "2024-05-25T12:00:00.000Z",
+    lastModified: "2024-05-25T12:00:00.000Z"
   },
   {
     id: 1716739200000,
@@ -159,7 +180,8 @@ const DEFAULT_WORKS = [
     prompt: "Professional portrait of a woman in her 30s, soft studio lighting, shallow depth of field, bokeh background, wearing elegant casual attire, natural smile, fashion magazine quality, shot on 85mm prime lens, f/1.4",
     tags: ["人物", "肖像", "摄影"],
     note: "适用于 Stable Diffusion 的人物肖像生成，浅景深效果突出",
-    createdAt: "2024-05-26T12:00:00.000Z"
+    createdAt: "2024-05-26T12:00:00.000Z",
+    lastModified: "2024-05-26T12:00:00.000Z"
   },
   {
     id: 1716825600000,
@@ -167,7 +189,8 @@ const DEFAULT_WORKS = [
     prompt: "Futuristic laptop on a clean white desk with minimal desk setup, screen displaying holographic UI interface, soft ambient lighting, product photography, clean composition, 4K resolution, Apple-style commercial aesthetic",
     tags: ["产品", "科技", "极简"],
     note: "电商产品图风格，纯白背景 + 柔和光源",
-    createdAt: "2024-05-27T12:00:00.000Z"
+    createdAt: "2024-05-27T12:00:00.000Z",
+    lastModified: "2024-05-27T12:00:00.000Z"
   },
   {
     id: 1716912000000,
@@ -175,7 +198,8 @@ const DEFAULT_WORKS = [
     prompt: "Modern architectural marvel, sweeping curves of a futuristic museum, glass and steel structure, sunset sky with dramatic clouds, architectural photography, symmetry, leading lines, ultra-wide angle lens, HDR",
     tags: ["建筑", "现代", "设计"],
     note: "建筑摄影类，强调几何线条与光影对比",
-    createdAt: "2024-05-28T12:00:00.000Z"
+    createdAt: "2024-05-28T12:00:00.000Z",
+    lastModified: "2024-05-28T12:00:00.000Z"
   }
 ];
 
@@ -359,12 +383,15 @@ async function deleteWork(workId) {
   if (saveDebounceTimer) { clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
   if (AUTH.isLoggedIn()) {
     try {
+      syncInProgress = true;
       setSyncStatus(SyncStatus.SYNCING);
       await upload();
       setSyncStatus(SyncStatus.SYNCED);
     } catch (e) {
       setSyncStatus(SyncStatus.FAILED);
       console.error("删除同步失败:", e);
+    } finally {
+      syncInProgress = false;
     }
   }
   refreshAll();
@@ -500,9 +527,11 @@ document.getElementById("workForm").addEventListener("submit", function(e) {
       works[index].prompt = prompt;
       works[index].tags = tags;
       works[index].note = note;
+      works[index].lastModified = new Date().toISOString();
     }
   } else {
-    works.push({ id: Date.now(), imageUrl, prompt, tags, note, createdAt: new Date().toISOString() });
+    const now = new Date().toISOString();
+    works.push({ id: Date.now(), imageUrl, prompt, tags, note, createdAt: now, lastModified: now });
   }
   saveData();
   refreshAll();
@@ -746,7 +775,9 @@ document.addEventListener("DOMContentLoaded", function() {
     renderGallery(filterWorks());
     updateStorageStats();
     updateSyncStatusIcon();
+    syncInProgress = true;
     initSync().then((r) => {
+      syncInProgress = false;
       if (r.success) {
         const raw = localStorage.getItem("promptLibrary");
         if (raw) { try { works = JSON.parse(raw); } catch (e) {} }
@@ -755,6 +786,9 @@ document.addEventListener("DOMContentLoaded", function() {
       } else {
         setSyncStatus(SyncStatus.FAILED);
       }
+    }).catch((e) => {
+      syncInProgress = false;
+      setSyncStatus(SyncStatus.FAILED);
     });
   } else {
     openLoginModal();
