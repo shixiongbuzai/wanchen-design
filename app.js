@@ -1,3 +1,160 @@
+/* ===== 登录验证 ===== */
+
+const AUTH = {
+  USERNAME: 'admin',
+  PASSWORD: 'admin2366335',
+
+  isLoggedIn() {
+    return localStorage.getItem('promptLibraryLoggedIn') === 'true';
+  },
+
+  login(username, password) {
+    if (username === this.USERNAME && password === this.PASSWORD) {
+      localStorage.setItem('promptLibraryLoggedIn', 'true');
+      if (!localStorage.getItem('promptLibraryUserId')) {
+        const uid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+        localStorage.setItem('promptLibraryUserId', uid);
+      }
+      return { success: true };
+    }
+    return { success: false, error: '账号或密码错误' };
+  },
+
+  logout() {
+    localStorage.removeItem('promptLibraryLoggedIn');
+  },
+
+  getUserId() {
+    return localStorage.getItem('promptLibraryUserId') || null;
+  }
+};
+
+/* ===== 同步状态管理 ===== */
+
+const SyncStatus = {
+  NOT_CONFIGURED: "not-configured",
+  NOT_LOGGED_IN: "not-logged-in",
+  SYNCING: "syncing",
+  SYNCED: "synced",
+  FAILED: "failed",
+  OFFLINE: "offline",
+};
+
+let currentSyncStatus = SyncStatus.NOT_LOGGED_IN;
+
+function updateSyncStatusIcon() {
+  const btn = document.getElementById("syncStatusBtn");
+  const icon = document.getElementById("syncIcon");
+  if (!btn || !icon) return;
+
+  btn.classList.remove("sync-not-logged-in", "sync-syncing", "sync-synced", "sync-failed", "sync-offline");
+
+  let statusClass = "";
+  let title = "";
+
+  if (!navigator.onLine) {
+    statusClass = "sync-offline";
+    title = "离线";
+    currentSyncStatus = SyncStatus.OFFLINE;
+  } else if (!supabaseClient || !AUTH.getUserId()) {
+    if (!AUTH.isLoggedIn()) {
+      statusClass = "sync-not-logged-in";
+      title = "未登录";
+      currentSyncStatus = SyncStatus.NOT_LOGGED_IN;
+    } else if (!window.SUPABASE_CONFIG || !window.SUPABASE_CONFIG.url) {
+      statusClass = "sync-not-logged-in";
+      title = "未配置 Supabase";
+      currentSyncStatus = SyncStatus.NOT_CONFIGURED;
+    } else {
+      statusClass = "sync-not-logged-in";
+      title = "同步不可用";
+      currentSyncStatus = SyncStatus.NOT_LOGGED_IN;
+    }
+  } else if (syncInProgress) {
+    statusClass = "sync-syncing";
+    title = "同步中...";
+    currentSyncStatus = SyncStatus.SYNCING;
+  } else {
+    statusClass = "sync-synced";
+    title = "已同步";
+    currentSyncStatus = SyncStatus.SYNCED;
+    setSyncedTimer();
+  }
+
+  btn.classList.add(statusClass);
+  btn.title = title;
+}
+
+let syncedTimer = null;
+function setSyncedTimer() {
+  if (syncedTimer) clearTimeout(syncedTimer);
+  syncedTimer = setTimeout(() => {
+    currentSyncStatus = SyncStatus.SYNCED;
+    updateSyncStatusIcon();
+  }, 30000);
+}
+
+function setSyncStatus(status) {
+  currentSyncStatus = status;
+  updateSyncStatusIcon();
+}
+
+/* ===== 同步触发 ===== */
+
+let syncDebounceTimer = null;
+
+function triggerAutoSync() {
+  if (!AUTH.isLoggedIn()) return;
+  if (!supabaseClient) return;
+
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(async () => {
+    setSyncStatus(SyncStatus.SYNCING);
+    const result = await sync();
+    if (result.success) {
+      const raw = localStorage.getItem("promptLibrary");
+      if (raw) {
+        try { works = JSON.parse(raw); } catch (e) {}
+      }
+      setSyncStatus(SyncStatus.SYNCED);
+      refreshAll();
+    } else {
+      setSyncStatus(SyncStatus.FAILED);
+      console.error("自动同步失败:", result.error);
+    }
+  }, 1500);
+}
+
+async function manualSync() {
+  if (!AUTH.isLoggedIn()) {
+    showToast("请先登录后再同步");
+    return;
+  }
+  if (!supabaseClient) {
+    showToast("请在 sync.js 中配置 Supabase（project URL 和 anon key）");
+    return;
+  }
+
+  setSyncStatus(SyncStatus.SYNCING);
+  const result = await sync();
+  if (result.success) {
+    const raw = localStorage.getItem("promptLibrary");
+    if (raw) {
+      try { works = JSON.parse(raw); } catch (e) {}
+    }
+    setSyncStatus(SyncStatus.SYNCED);
+    refreshAll();
+    showToast("同步完成");
+  } else {
+    setSyncStatus(SyncStatus.FAILED);
+    showToast("同步失败：" + result.error);
+  }
+}
+
 /* ===== 数据管理 ===== */
 
 const DEFAULT_WORKS = [
@@ -50,11 +207,7 @@ let editingWorkId = null;
 function loadData() {
   const raw = localStorage.getItem("promptLibrary");
   if (raw) {
-    try {
-      works = JSON.parse(raw);
-    } catch (e) {
-      works = [];
-    }
+    try { works = JSON.parse(raw); } catch (e) { works = []; }
   }
   if (!works || works.length === 0) {
     works = JSON.parse(JSON.stringify(DEFAULT_WORKS));
@@ -65,6 +218,7 @@ function loadData() {
 function saveData() {
   localStorage.setItem("promptLibrary", JSON.stringify(works));
   updateStorageStats();
+  triggerAutoSync();
 }
 
 /* ===== Toast 提示 ===== */
@@ -75,11 +229,7 @@ function showToast(message) {
   toast.className = "toast";
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => {
-    if (toast.parentNode) {
-      toast.remove();
-    }
-  }, 2500);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
 }
 
 /* ===== 工具函数 ===== */
@@ -115,7 +265,6 @@ function createCard(work) {
   card.className = "card";
   card.setAttribute("data-id", work.id);
 
-  // 图片区
   const imgWrapper = document.createElement("div");
   imgWrapper.className = "card-image-wrapper";
 
@@ -125,12 +274,11 @@ function createCard(work) {
   img.loading = "lazy";
   img.onerror = function() {
     this.src = "data:image/svg+xml," + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="#333"><rect width="400" height="300"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="16">圖片載入失敗</text></svg>'
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="#333"><rect width="400" height="300"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="16">图片载入失败</text></svg>'
     );
   };
   imgWrapper.appendChild(img);
 
-  // 遮罩层 + 图标按钮
   const overlay = document.createElement("div");
   overlay.className = "card-overlay";
 
@@ -138,28 +286,19 @@ function createCard(work) {
   detailBtn.className = "card-overlay-btn";
   detailBtn.title = "查看详情";
   detailBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
-  detailBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    openDetail(work.id);
-  });
+  detailBtn.addEventListener("click", (e) => { e.stopPropagation(); openDetail(work.id); });
 
   const editBtn = document.createElement("button");
   editBtn.className = "card-overlay-btn";
   editBtn.title = "编辑";
   editBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-  editBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    openForm(work.id);
-  });
+  editBtn.addEventListener("click", (e) => { e.stopPropagation(); openForm(work.id); });
 
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "card-overlay-btn";
   deleteBtn.title = "删除";
   deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
-  deleteBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    deleteWork(work.id);
-  });
+  deleteBtn.addEventListener("click", (e) => { e.stopPropagation(); deleteWork(work.id); });
 
   overlay.appendChild(detailBtn);
   overlay.appendChild(editBtn);
@@ -167,12 +306,10 @@ function createCard(work) {
   imgWrapper.appendChild(overlay);
   card.appendChild(imgWrapper);
 
-  // 标签徽章
   if (work.tags && work.tags.length > 0) {
     const tagContainer = document.createElement("div");
     tagContainer.className = "card-tags";
-    const displayTags = work.tags.slice(0, 2);
-    displayTags.forEach(tag => {
+    work.tags.slice(0, 2).forEach(tag => {
       const badge = document.createElement("span");
       badge.className = "tag-badge";
       badge.textContent = tag;
@@ -181,54 +318,37 @@ function createCard(work) {
     card.appendChild(tagContainer);
   }
 
-  // 提示词复制区
   if (work.prompt) {
     const promptArea = document.createElement("div");
     promptArea.className = "card-prompt";
-
     const promptText = document.createElement("span");
     promptText.className = "card-prompt-text";
     promptText.textContent = work.prompt;
-
     const copyIcon = document.createElement("span");
     copyIcon.className = "card-copy-icon";
     copyIcon.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
-
     promptArea.appendChild(promptText);
     promptArea.appendChild(copyIcon);
-
-    promptArea.addEventListener("click", (e) => {
-      e.stopPropagation();
-      copyPrompt(work.prompt, copyIcon);
-    });
-
+    promptArea.addEventListener("click", (e) => { e.stopPropagation(); copyPrompt(work.prompt, copyIcon); });
     card.appendChild(promptArea);
   }
 
-  // 点击卡片打开详情
   card.addEventListener("click", () => openDetail(work.id));
-
   return card;
 }
 
 function renderGallery(filteredWorks) {
   const gallery = document.getElementById("gallery");
   const emptyState = document.getElementById("emptyState");
-
   gallery.innerHTML = "";
-
   if (filteredWorks.length === 0) {
     emptyState.style.display = "flex";
     gallery.style.display = "none";
     return;
   }
-
   emptyState.style.display = "none";
   gallery.style.display = "";
-
-  filteredWorks.forEach(work => {
-    gallery.appendChild(createCard(work));
-  });
+  filteredWorks.forEach(work => gallery.appendChild(createCard(work)));
 }
 
 /* ===== 复制功能 ===== */
@@ -244,9 +364,7 @@ function copyPrompt(text, iconEl) {
       }, 1500);
     }
     showToast("提示词已复制");
-  }).catch(() => {
-    showToast("复制失败，请手动复制");
-  });
+  }).catch(() => showToast("复制失败，请手动复制"));
 }
 
 /* ===== 删除操作 ===== */
@@ -254,15 +372,11 @@ function copyPrompt(text, iconEl) {
 function deleteWork(workId) {
   const work = works.find(w => w.id === workId);
   if (!work) return;
-
   if (!confirm("确定要删除这个作品吗？此操作不可撤销。")) return;
-
   works = works.filter(w => w.id !== workId);
   saveData();
   refreshAll();
   showToast("作品已删除");
-
-  // 如果详情模态框打开且显示的就是被删除的作品，关闭它
   const detailModal = document.getElementById("detailModal");
   if (detailModal.classList.contains("show") && detailModal.getAttribute("data-current-id") == workId) {
     closeDetail();
@@ -274,18 +388,14 @@ function deleteWork(workId) {
 function openDetail(workId) {
   const work = works.find(w => w.id === workId);
   if (!work) return;
-
   const modal = document.getElementById("detailModal");
   modal.setAttribute("data-current-id", workId);
-
   document.getElementById("detailImage").src = work.imageUrl;
   document.getElementById("detailImage").onerror = function() {
     this.src = "data:image/svg+xml," + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" fill="#333"><rect width="600" height="400"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="18">圖片載入失敗</text></svg>'
+      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" fill="#333"><rect width="600" height="400"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="18">图片载入失败</text></svg>'
     );
   };
-
-  // 标签
   const tagsContainer = document.getElementById("detailTags");
   tagsContainer.innerHTML = "";
   if (work.tags && work.tags.length > 0) {
@@ -296,28 +406,11 @@ function openDetail(workId) {
       tagsContainer.appendChild(badge);
     });
   }
-
   document.getElementById("detailPrompt").textContent = work.prompt || "";
   document.getElementById("detailImageUrl").textContent = work.imageUrl || "";
-
-  // 一键复制按钮
-  const copyBtn = document.getElementById("detailCopyBtn");
-  copyBtn.onclick = function() {
-    copyPrompt(work.prompt, null);
-  };
-
-  // 编辑按钮
-  document.getElementById("detailEditBtn").onclick = function() {
-    closeDetail();
-    openForm(workId);
-  };
-
-  // 删除按钮
-  document.getElementById("detailDeleteBtn").onclick = function() {
-    closeDetail();
-    deleteWork(workId);
-  };
-
+  document.getElementById("detailCopyBtn").onclick = function() { copyPrompt(work.prompt, null); };
+  document.getElementById("detailEditBtn").onclick = function() { closeDetail(); openForm(workId); };
+  document.getElementById("detailDeleteBtn").onclick = function() { closeDetail(); deleteWork(workId); };
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
 }
@@ -329,41 +422,13 @@ function closeDetail() {
   document.body.style.overflow = "";
 }
 
-// 详情模态框关闭事件
-document.getElementById("detailClose").addEventListener("click", closeDetail);
-document.getElementById("detailModal").addEventListener("click", function(e) {
-  if (e.target === this) closeDetail();
-});
-
-// 详情大图点击全屏
-document.getElementById("detailImage").addEventListener("click", function() {
-  if (this.requestFullscreen) {
-    this.requestFullscreen();
-  }
-});
-
-// ESC 关闭详情
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape") {
-    const detailModal = document.getElementById("detailModal");
-    const formModal = document.getElementById("formModal");
-    if (detailModal.classList.contains("show")) {
-      closeDetail();
-    } else if (formModal.classList.contains("show")) {
-      closeForm();
-    }
-  }
-});
-
 /* ===== 添加/编辑表单 ===== */
 
 function openForm(workId) {
   editingWorkId = workId || null;
   const modal = document.getElementById("formModal");
-  const title = document.getElementById("formTitle");
-
   if (workId) {
-    title.textContent = "编辑作品";
+    document.getElementById("formTitle").textContent = "编辑作品";
     const work = works.find(w => w.id === workId);
     if (work) {
       document.getElementById("imageUrl").value = work.imageUrl || "";
@@ -373,66 +438,45 @@ function openForm(workId) {
       updateImagePreview();
     }
   } else {
-    title.textContent = "添加作品";
+    document.getElementById("formTitle").textContent = "添加作品";
     document.getElementById("workForm").reset();
     document.getElementById("imagePreview").style.display = "none";
     document.getElementById("tagSuggestions").innerHTML = "";
   }
-
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
 }
 
 function closeForm() {
-  const modal = document.getElementById("formModal");
-  modal.classList.remove("show");
+  document.getElementById("formModal").classList.remove("show");
   document.body.style.overflow = "";
   editingWorkId = null;
 }
 
-// 图片URL实时预览
 document.getElementById("imageUrl").addEventListener("input", updateImagePreview);
 
 function updateImagePreview() {
   const url = document.getElementById("imageUrl").value.trim();
   const preview = document.getElementById("imagePreview");
   const img = document.getElementById("previewImg");
-
   if (url) {
     img.src = url;
-    img.onerror = function() {
-      preview.style.display = "none";
-    };
-    img.onload = function() {
-      preview.style.display = "block";
-    };
+    img.onerror = function() { preview.style.display = "none"; };
+    img.onload = function() { preview.style.display = "block"; };
   } else {
     preview.style.display = "none";
   }
 }
 
-// 标签自动补全
 document.getElementById("tags").addEventListener("input", function() {
   const input = this.value;
   const suggestions = document.getElementById("tagSuggestions");
-
-  if (!input) {
-    suggestions.innerHTML = "";
-    return;
-  }
-
-  // 获取当前输入中最后一个逗号后的内容
+  if (!input) { suggestions.innerHTML = ""; return; }
   const parts = input.split(",");
   const lastPart = parts[parts.length - 1].trim();
-
-  if (!lastPart) {
-    suggestions.innerHTML = "";
-    return;
-  }
-
+  if (!lastPart) { suggestions.innerHTML = ""; return; }
   const allTags = getAllTags();
   const matches = allTags.filter(t => t.toLowerCase().includes(lastPart.toLowerCase()) && !parts.slice(0, -1).some(p => p.trim() === t));
-
   suggestions.innerHTML = "";
   if (matches.length > 0 && lastPart.length >= 1) {
     matches.slice(0, 6).forEach(tag => {
@@ -449,22 +493,14 @@ document.getElementById("tags").addEventListener("input", function() {
   }
 });
 
-// 表单提交
 document.getElementById("workForm").addEventListener("submit", function(e) {
   e.preventDefault();
-
   const imageUrl = document.getElementById("imageUrl").value.trim();
   const prompt = document.getElementById("prompt").value.trim();
   const tagsRaw = document.getElementById("tags").value.trim();
   const note = document.getElementById("note").value.trim();
-
-  if (!imageUrl || !prompt) {
-    showToast("请填写图片链接和提示词");
-    return;
-  }
-
+  if (!imageUrl || !prompt) { showToast("请填写图片链接和提示词"); return; }
   const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
-
   if (editingWorkId) {
     const index = works.findIndex(w => w.id === editingWorkId);
     if (index !== -1) {
@@ -474,77 +510,41 @@ document.getElementById("workForm").addEventListener("submit", function(e) {
       works[index].note = note;
     }
   } else {
-    works.push({
-      id: Date.now(),
-      imageUrl: imageUrl,
-      prompt: prompt,
-      tags: tags,
-      note: note,
-      createdAt: new Date().toISOString()
-    });
+    works.push({ id: Date.now(), imageUrl, prompt, tags, note, createdAt: new Date().toISOString() });
   }
-
   saveData();
   refreshAll();
   closeForm();
   showToast(editingWorkId ? "作品已更新" : "作品已添加");
 });
 
-// 取消按钮
 document.getElementById("formCancelBtn").addEventListener("click", closeForm);
 document.getElementById("formClose").addEventListener("click", closeForm);
-document.getElementById("formModal").addEventListener("click", function(e) {
-  if (e.target === this) closeForm();
-});
+document.getElementById("formModal").addEventListener("click", function(e) { if (e.target === this) closeForm(); });
 
 /* ===== 搜索与筛选 ===== */
 
-document.getElementById("searchInput").addEventListener("input", function() {
-  renderGallery(filterWorks());
-});
+document.getElementById("searchInput").addEventListener("input", function() { renderGallery(filterWorks()); });
 
-// 标签筛选下拉
 const tagFilterBtn = document.getElementById("tagFilterBtn");
 const tagDropdown = document.getElementById("tagDropdown");
-
-tagFilterBtn.addEventListener("click", function(e) {
-  e.stopPropagation();
-  tagDropdown.classList.toggle("show");
-  populateTagDropdown();
-});
-
-document.addEventListener("click", function() {
-  tagDropdown.classList.remove("show");
-});
-
-tagDropdown.addEventListener("click", function(e) {
-  e.stopPropagation();
-});
+tagFilterBtn.addEventListener("click", function(e) { e.stopPropagation(); tagDropdown.classList.toggle("show"); populateTagDropdown(); });
+document.addEventListener("click", function() { tagDropdown.classList.remove("show"); });
+tagDropdown.addEventListener("click", function(e) { e.stopPropagation(); });
 
 function populateTagDropdown() {
   const allTags = getAllTags();
   tagDropdown.innerHTML = "";
-
-  // 全部选项
   const allOption = document.createElement("button");
   allOption.className = "tag-option" + (!currentFilterTag ? " active" : "");
   allOption.textContent = "全部标签";
-  allOption.addEventListener("click", () => {
-    currentFilterTag = null;
-    renderGallery(filterWorks());
-    tagDropdown.classList.remove("show");
-  });
+  allOption.addEventListener("click", () => { currentFilterTag = null; renderGallery(filterWorks()); tagDropdown.classList.remove("show"); });
   tagDropdown.appendChild(allOption);
-
   allTags.forEach(tag => {
     const option = document.createElement("button");
     option.className = "tag-option" + (currentFilterTag === tag ? " active" : "");
     option.textContent = tag;
-    option.addEventListener("click", () => {
-      currentFilterTag = currentFilterTag === tag ? null : tag;
-      renderGallery(filterWorks());
-      tagDropdown.classList.remove("show");
-    });
+    option.addEventListener("click", () => { currentFilterTag = currentFilterTag === tag ? null : tag; renderGallery(filterWorks()); tagDropdown.classList.remove("show"); });
     tagDropdown.appendChild(option);
   });
 }
@@ -553,30 +553,115 @@ function populateTagDropdown() {
 
 const settingsPanel = document.getElementById("settingsPanel");
 const settingsOverlay = document.getElementById("settingsOverlay");
-
 document.getElementById("settingsBtn").addEventListener("click", function() {
   settingsPanel.classList.add("show");
   settingsOverlay.classList.add("show");
   updateStorageStats();
+  updateAccountUI();
   document.body.style.overflow = "hidden";
 });
-
 function closeSettings() {
   settingsPanel.classList.remove("show");
   settingsOverlay.classList.remove("show");
   document.body.style.overflow = "";
 }
-
 document.getElementById("settingsClose").addEventListener("click", closeSettings);
 settingsOverlay.addEventListener("click", closeSettings);
-
 document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape" && settingsPanel.classList.contains("show")) {
-    closeSettings();
+  if (e.key === "Escape" && settingsPanel.classList.contains("show")) closeSettings();
+});
+
+/* ===== 登录模态框 ===== */
+
+function openLoginModal() {
+  const modal = document.getElementById("loginModal");
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+  const usernameInput = document.getElementById("loginUsername");
+  if (usernameInput) usernameInput.focus();
+}
+
+function closeLoginModal() {
+  document.getElementById("loginModal").classList.remove("show");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("loginForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const username = document.getElementById("loginUsername").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  if (!username || !password) { showToast("请填写用户名和密码"); return; }
+  const result = AUTH.login(username, password);
+  if (result.success) {
+    closeLoginModal();
+    showToast("登录成功！");
+    loadData();
+    renderGallery(filterWorks());
+    updateStorageStats();
+    updateSyncStatusIcon();
+    updateAccountUI();
+    initSync().then((r) => {
+      if (r.success) {
+        const raw = localStorage.getItem("promptLibrary");
+        if (raw) { try { works = JSON.parse(raw); } catch (e) {} }
+        setSyncStatus(SyncStatus.SYNCED);
+        refreshAll();
+      } else {
+        setSyncStatus(SyncStatus.FAILED);
+        console.error("同步初始化失败:", r.error);
+      }
+    });
+  } else {
+    showToast(result.error);
   }
 });
 
-// 导出数据
+/* ===== 账户 UI ===== */
+
+function updateAccountUI() {
+  const statusText = document.getElementById("accountStatusText");
+  const btnWrapper = document.getElementById("accountStatus");
+  if (!statusText || !btnWrapper) return;
+  if (AUTH.isLoggedIn()) {
+    statusText.textContent = "已登录 — 同步功能可用";
+    if (!document.getElementById("logoutBtn")) {
+      const logoutBtn = document.createElement("button");
+      logoutBtn.id = "logoutBtn";
+      logoutBtn.className = "btn btn-outline";
+      logoutBtn.textContent = "退出登录";
+      logoutBtn.addEventListener("click", function() {
+        if (confirm("退出登录不会删除数据，但同步功能将不可用。确定退出吗？")) {
+          AUTH.logout();
+          updateAccountUI();
+          updateSyncStatusIcon();
+          showToast("已退出登录");
+          openLoginModal();
+        }
+      });
+      const oldBtn = btnWrapper.querySelector("button");
+      if (oldBtn) oldBtn.remove();
+      btnWrapper.appendChild(logoutBtn);
+    }
+  } else {
+    statusText.textContent = "未登录 — 同步功能不可用";
+    const logoutBtn = btnWrapper.querySelector("#logoutBtn");
+    if (logoutBtn) logoutBtn.remove();
+  }
+}
+
+/* ===== 同步按钮 / 离线 / 导入导出 / 暗黑 ===== */
+
+document.getElementById("syncStatusBtn").addEventListener("click", function() {
+  if (!AUTH.isLoggedIn()) openLoginModal();
+  else if (!window.SUPABASE_CONFIG || !window.SUPABASE_CONFIG.url) showToast("请在 sync.js 中配置 Supabase");
+  else manualSync();
+});
+
+setupNetworkListeners(
+  function() { updateSyncStatusIcon(); showToast("网络已恢复"); },
+  function() { updateSyncStatusIcon(); showToast("网络已断开"); }
+);
+
 document.getElementById("exportBtn").addEventListener("click", function() {
   const blob = new Blob([JSON.stringify(works, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -590,20 +675,11 @@ document.getElementById("exportBtn").addEventListener("click", function() {
   showToast("数据已导出");
 });
 
-// 导入数据
-document.getElementById("importBtn").addEventListener("click", function() {
-  document.getElementById("importFile").click();
-});
-
+document.getElementById("importBtn").addEventListener("click", function() { document.getElementById("importFile").click(); });
 document.getElementById("importFile").addEventListener("change", function(e) {
   const file = e.target.files[0];
   if (!file) return;
-
-  if (!confirm("导入将覆盖当前所有数据，确定继续吗？")) {
-    this.value = "";
-    return;
-  }
-
+  if (!confirm("导入将覆盖当前所有数据，确定继续吗？")) { this.value = ""; return; }
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
@@ -613,46 +689,30 @@ document.getElementById("importFile").addEventListener("change", function(e) {
       saveData();
       refreshAll();
       showToast("数据导入成功，共 " + works.length + " 条作品");
-    } catch (err) {
-      showToast("导入失败：文件格式不正确");
-    }
+    } catch (err) { showToast("导入失败：文件格式不正确"); }
   };
   reader.readAsText(file);
   this.value = "";
 });
 
-// 重置为示例数据
 document.getElementById("resetBtn").addEventListener("click", function() {
-  if (!confirm("确定要重置为示例数据吗？当前所有作品将被删除。")) return;
+  if (!confirm("确定要重置为示例数据吗？")) return;
   works = JSON.parse(JSON.stringify(DEFAULT_WORKS));
   saveData();
   refreshAll();
   showToast("已重置为示例数据");
 });
 
-// 暗黑模式切换
 const darkModeToggle = document.getElementById("darkModeToggle");
-
-// 恢复暗黑模式偏好
 (function initDarkMode() {
   const saved = localStorage.getItem("promptLibraryDarkMode");
-  if (saved === "true") {
-    document.body.classList.add("dark");
-    darkModeToggle.checked = true;
-  }
+  if (saved === "true") { document.body.classList.add("dark"); darkModeToggle.checked = true; }
 })();
-
 darkModeToggle.addEventListener("change", function() {
-  if (this.checked) {
-    document.body.classList.add("dark");
-    localStorage.setItem("promptLibraryDarkMode", "true");
-  } else {
-    document.body.classList.remove("dark");
-    localStorage.setItem("promptLibraryDarkMode", "false");
-  }
+  if (this.checked) { document.body.classList.add("dark"); localStorage.setItem("promptLibraryDarkMode", "true"); }
+  else { document.body.classList.remove("dark"); localStorage.setItem("promptLibraryDarkMode", "false"); }
 });
 
-// 存储统计
 function updateStorageStats() {
   const stats = document.getElementById("storageStats");
   if (!stats) return;
@@ -660,24 +720,52 @@ function updateStorageStats() {
   stats.textContent = works.length + " 个作品 | 占用 " + formatBytes(bytes);
 }
 
-/* ===== 添加按钮 ===== */
-
-document.getElementById("addBtn").addEventListener("click", function() {
-  openForm(null);
-});
-
-/* ===== 全量刷新 ===== */
+document.getElementById("addBtn").addEventListener("click", function() { openForm(null); });
 
 function refreshAll() {
-  const filtered = filterWorks();
-  renderGallery(filtered);
+  renderGallery(filterWorks());
   updateStorageStats();
 }
+
+/* ===== ESC 全局（登录框除外） ===== */
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") {
+    const loginModal = document.getElementById("loginModal");
+    if (loginModal && loginModal.classList.contains("show")) return;
+    const detailModal = document.getElementById("detailModal");
+    const formModal = document.getElementById("formModal");
+    if (detailModal && detailModal.classList.contains("show")) closeDetail();
+    else if (formModal && formModal.classList.contains("show")) closeForm();
+  }
+});
+
+/* ===== 详情事件绑定 ===== */
+
+document.getElementById("detailClose").addEventListener("click", closeDetail);
+document.getElementById("detailModal").addEventListener("click", function(e) { if (e.target === this) closeDetail(); });
+document.getElementById("detailImage").addEventListener("click", function() { if (this.requestFullscreen) this.requestFullscreen(); });
 
 /* ===== 初始化 ===== */
 
 document.addEventListener("DOMContentLoaded", function() {
-  loadData();
-  renderGallery(filterWorks());
-  updateStorageStats();
+  updateAccountUI();
+  if (AUTH.isLoggedIn()) {
+    loadData();
+    renderGallery(filterWorks());
+    updateStorageStats();
+    updateSyncStatusIcon();
+    initSync().then((r) => {
+      if (r.success) {
+        const raw = localStorage.getItem("promptLibrary");
+        if (raw) { try { works = JSON.parse(raw); } catch (e) {} }
+        setSyncStatus(SyncStatus.SYNCED);
+        refreshAll();
+      } else {
+        setSyncStatus(SyncStatus.FAILED);
+      }
+    });
+  } else {
+    openLoginModal();
+  }
 });

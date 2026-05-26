@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>我的提示词库</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- Supabase 客户端 JS 库 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- 用户 Supabase 配置 — 请在此填写你的项目 URL 和 anon key -->
+  <script>
+    window.SUPABASE_CONFIG = {
+      url: '',       // 如 'https://xxxxx.supabase.co'
+      anonKey: ''    // 如 'eyJ......'
+    };
+  </script>
 </head>
 <body>
   <!-- 顶部导航栏 -->
@@ -35,6 +44,14 @@
         </button>
         <div class="tag-dropdown" id="tagDropdown"></div>
       </div>
+      <!-- 同步状态图标 -->
+      <button class="btn btn-icon sync-status" id="syncStatusBtn" title="同步状态">
+        <svg id="syncIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"/>
+          <path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+      </button>
       <button class="btn btn-icon" id="settingsBtn" title="数据管理">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
@@ -189,8 +206,18 @@
       <div class="setting-item">
         <div class="setting-info">
           <h4>隐私说明</h4>
-          <p>所有数据仅存储在您的浏览器本地（localStorage），不会上传至任何服务器。</p>
+          <p>所有数据仅存储在您的浏览器本地（localStorage），同步到 Supabase 的数据需您自行配置。</p>
         </div>
+      </div>
+      <div class="settings-section-divider">
+        <h3>账户与同步</h3>
+      </div>
+      <div class="setting-item" id="accountStatus">
+        <div class="setting-info">
+          <h4>登录状态</h4>
+          <p id="accountStatusText">未登录 — 同步功能不可用</p>
+        </div>
+        <!-- 退出登录按钮由 JS 动态生成 -->
       </div>
     </div>
   </div>
@@ -198,6 +225,27 @@
   <!-- Toast 提示组件 -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- 登录模态框（全屏遮罩，不可跳过） -->
+  <div class="modal-overlay login-overlay" id="loginModal">
+    <div class="modal-form login-form">
+      <h2>我的提示词库</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername">用户名</label>
+          <input type="text" id="loginUsername" placeholder="输入用户名" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">密码</label>
+          <input type="password" id="loginPassword" placeholder="输入密码" required autocomplete="current-password">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">登录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="sync.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
