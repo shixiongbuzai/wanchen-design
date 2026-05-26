@@ -57,6 +57,7 @@ function updateSyncStatusIcon() {
   let statusClass = "";
   let title = "";
 
+  // FAILED 状态除非被显式覆盖，否则保持
   if (!navigator.onLine) {
     statusClass = "sync-offline";
     title = "离线";
@@ -75,6 +76,10 @@ function updateSyncStatusIcon() {
     statusClass = "sync-syncing";
     title = "同步中...";
     currentSyncStatus = SyncStatus.SYNCING;
+  } else if (currentSyncStatus === SyncStatus.FAILED) {
+    // 保持 FAILED 状态不被覆盖
+    statusClass = "sync-failed";
+    title = "同步失败";
   } else {
     statusClass = "sync-synced";
     title = "已同步";
@@ -90,7 +95,9 @@ let syncedTimer = null;
 function setSyncedTimer() {
   if (syncedTimer) clearTimeout(syncedTimer);
   syncedTimer = setTimeout(() => {
-    currentSyncStatus = SyncStatus.SYNCED;
+    if (currentSyncStatus !== SyncStatus.FAILED) {
+      currentSyncStatus = SyncStatus.SYNCED;
+    }
     updateSyncStatusIcon();
   }, 30000);
 }
@@ -119,6 +126,7 @@ function triggerAutoSave() {
       setSyncStatus(SyncStatus.FAILED);
     } finally {
       syncInProgress = false;
+      updateSyncStatusIcon();
     }
   }, 1500);
 }
@@ -150,6 +158,7 @@ async function manualRestore() {
     showToast("下载异常：" + e.message);
   } finally {
     syncInProgress = false;
+    updateSyncStatusIcon();
   }
 }
 
@@ -207,22 +216,43 @@ let works = [];
 let currentFilterTag = null;
 let editingWorkId = null;
 
+/**
+ * 从 localStorage 加载数据。
+ * 不再自动写入 DEFAULT_WORKS——首次使用时展示空状态。
+ */
 function loadData() {
   const raw = localStorage.getItem("promptLibrary");
   if (raw) {
     try { works = JSON.parse(raw); } catch (e) { works = []; }
-  }
-  if (!works || works.length === 0) {
-    works = JSON.parse(JSON.stringify(DEFAULT_WORKS));
-    saveData();
+  } else {
+    works = [];
   }
   console.log("loadData: works count =", works.length);
 }
 
 function saveData() {
-  localStorage.setItem("promptLibrary", JSON.stringify(works));
+  const current = JSON.parse(localStorage.getItem("promptLibrary") || "[]");
+  // 用 mergeByIdAndTime 合并，避免覆盖其他标签页的修改
+  const merged = mergeByIdAndTime(current, works);
+  works = merged;
+  localStorage.setItem("promptLibrary", JSON.stringify(merged));
   updateStorageStats();
   triggerAutoSave();
+}
+
+/* ===== normalizeWork：确保导入条目字段完整 ===== */
+
+function normalizeWork(item) {
+  return {
+    id: item.id || Date.now() + Math.floor(Math.random() * 1000),
+    prompt: typeof item.prompt === "string" ? item.prompt : "",
+    tags: Array.isArray(item.tags) ? item.tags : (typeof item.tags === "string" ? item.tags.split(",").map(t => t.trim()).filter(Boolean) : []),
+    note: typeof item.note === "string" ? item.note : "",
+    imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : "",
+    lastModified: typeof item.lastModified === "string" ? item.lastModified : (item.createdAt || new Date().toISOString()),
+    deletedAt: item.deletedAt || null,
+    createdAt: item.createdAt || item.lastModified || new Date().toISOString()
+  };
 }
 
 /* ===== Toast 提示 ===== */
@@ -246,13 +276,21 @@ function formatBytes(bytes) {
 
 function getAllTags() {
   const tagSet = new Set();
-  works.forEach(w => w.tags.forEach(t => tagSet.add(t)));
+  works.forEach(w => {
+    if (!w.deletedAt) {
+      w.tags.forEach(t => tagSet.add(t));
+    }
+  });
   return Array.from(tagSet).sort();
 }
 
+/**
+ * 搜索 + 标签筛选，过滤软删除条目
+ */
 function filterWorks() {
   const query = document.getElementById("searchInput").value.toLowerCase().trim();
   return works.filter(w => {
+    if (w.deletedAt) return false;
     const matchTag = !currentFilterTag || w.tags.includes(currentFilterTag);
     const matchSearch = !query ||
       w.prompt.toLowerCase().includes(query) ||
@@ -347,6 +385,16 @@ function renderGallery(filteredWorks) {
   gallery.innerHTML = "";
   if (filteredWorks.length === 0) {
     emptyState.style.display = "flex";
+    // 显示合适的空状态文案
+    const emptyMsg = emptyState.querySelector("p");
+    if (emptyMsg) {
+      const raw = localStorage.getItem("promptLibrary");
+      if (!raw || raw === "[]") {
+        emptyMsg.textContent = "还没有作品，点击添加你的第一个作品";
+      } else {
+        emptyMsg.textContent = "没有匹配的作品";
+      }
+    }
     gallery.style.display = "none";
     return;
   }
@@ -371,15 +419,19 @@ function copyPrompt(text, iconEl) {
   }).catch(() => showToast("复制失败，请手动复制"));
 }
 
-/* ===== 删除操作 ===== */
+/* ===== 删除操作（软删除） ===== */
 
 async function deleteWork(workId) {
   const work = works.find(w => w.id === workId);
   if (!work) return;
   if (!confirm("确定要删除这个作品吗？此操作不可撤销。")) return;
-  works = works.filter(w => w.id !== workId);
+
+  // 软删除：标记 deletedAt，不从数组移除
+  work.deletedAt = new Date().toISOString();
+  work.lastModified = new Date().toISOString();
   saveData();
-  // 清除防抖，立即同步到 GitHub
+
+  // 立即同步到 GitHub
   if (saveDebounceTimer) { clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
   if (AUTH.isLoggedIn()) {
     try {
@@ -392,6 +444,7 @@ async function deleteWork(workId) {
       console.error("删除同步失败:", e);
     } finally {
       syncInProgress = false;
+      updateSyncStatusIcon();
     }
   }
   refreshAll();
@@ -519,6 +572,13 @@ document.getElementById("workForm").addEventListener("submit", function(e) {
   const tagsRaw = document.getElementById("tags").value.trim();
   const note = document.getElementById("note").value.trim();
   if (!imageUrl || !prompt) { showToast("请填写图片链接和提示词"); return; }
+
+  // 校验图片 URL 必须以 http:// 或 https:// 开头
+  if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
+    showToast("图片地址必须以 http:// 或 https:// 开头");
+    return;
+  }
+
   const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
   if (editingWorkId) {
     const index = works.findIndex(w => w.id === editingWorkId);
@@ -616,21 +676,32 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
   if (result.success) {
     closeLoginModal();
     showToast("登录成功！");
-    loadData();
-    renderGallery(filterWorks());
-    updateStorageStats();
+    // 登录后：先 initSync 拉取远端 → 合并 → 再从 localStorage 加载渲染
     updateSyncStatusIcon();
     updateAccountUI();
+    syncInProgress = true;
+    setSyncStatus(SyncStatus.SYNCING);
     initSync().then((r) => {
+      syncInProgress = false;
       if (r.success) {
-        const raw = localStorage.getItem("promptLibrary");
-        if (raw) { try { works = JSON.parse(raw); } catch (e) {} }
+        // 远端已合并到 localStorage，现在加载
+        loadData();
         setSyncStatus(SyncStatus.SYNCED);
         refreshAll();
       } else {
+        // 即使同步失败，也加载本地数据
+        loadData();
         setSyncStatus(SyncStatus.FAILED);
+        refreshAll();
         console.error("同步初始化失败:", r.error);
       }
+      updateSyncStatusIcon();
+    }).catch((e) => {
+      syncInProgress = false;
+      loadData();
+      setSyncStatus(SyncStatus.FAILED);
+      refreshAll();
+      updateSyncStatusIcon();
     });
   } else {
     showToast(result.error);
@@ -699,16 +770,19 @@ document.getElementById("importBtn").addEventListener("click", function() { docu
 document.getElementById("importFile").addEventListener("change", function(e) {
   const file = e.target.files[0];
   if (!file) return;
-  if (!confirm("导入将覆盖当前所有数据，确定继续吗？")) { this.value = ""; return; }
+  if (!confirm("导入将合并 JSON 数据（按 id+lastModified 取最新），确定继续吗？")) { this.value = ""; return; }
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
       const data = JSON.parse(evt.target.result);
       if (!Array.isArray(data)) throw new Error("格式无效");
-      works = data;
+      // 对每个条目 normalize，再与现有数据合并
+      const normalized = data.map(normalizeWork);
+      const merged = mergeByIdAndTime(works, normalized);
+      works = merged;
       saveData();
       refreshAll();
-      showToast("数据导入成功，共 " + works.length + " 条作品");
+      showToast("数据导入并合并成功，共 " + works.length + " 条作品");
     } catch (err) { showToast("导入失败：文件格式不正确"); }
   };
   reader.readAsText(file);
@@ -716,7 +790,7 @@ document.getElementById("importFile").addEventListener("change", function(e) {
 });
 
 document.getElementById("resetBtn").addEventListener("click", function() {
-  if (!confirm("确定要重置为示例数据吗？")) return;
+  if (!confirm("确定要重置为示例数据吗？这将覆盖当前数据。")) return;
   works = JSON.parse(JSON.stringify(DEFAULT_WORKS));
   saveData();
   refreshAll();
@@ -771,24 +845,27 @@ document.getElementById("detailImage").addEventListener("click", function() { if
 document.addEventListener("DOMContentLoaded", function() {
   updateAccountUI();
   if (AUTH.isLoggedIn()) {
-    loadData();
-    renderGallery(filterWorks());
-    updateStorageStats();
-    updateSyncStatusIcon();
+    // 已登录：先 initSync 拉取远端 → 合并 → 再从 localStorage 加载渲染
+    // 不再先生成 DEFAULT_WORKS 再上传
     syncInProgress = true;
+    setSyncStatus(SyncStatus.SYNCING);
     initSync().then((r) => {
       syncInProgress = false;
       if (r.success) {
-        const raw = localStorage.getItem("promptLibrary");
-        if (raw) { try { works = JSON.parse(raw); } catch (e) {} }
+        loadData();
         setSyncStatus(SyncStatus.SYNCED);
-        refreshAll();
       } else {
+        loadData();
         setSyncStatus(SyncStatus.FAILED);
       }
+      refreshAll();
+      updateSyncStatusIcon();
     }).catch((e) => {
       syncInProgress = false;
+      loadData();
       setSyncStatus(SyncStatus.FAILED);
+      refreshAll();
+      updateSyncStatusIcon();
     });
   } else {
     openLoginModal();
