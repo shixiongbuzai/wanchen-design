@@ -50,8 +50,8 @@ async function pullFromCloud() {
     const { data, error } = await supabaseClient
       .from("works")
       .select("*")
-      .eq("userId", userId)
-      .order("lastModified", { ascending: false });
+      .eq("user_id", userId)
+      .order("last_modified", { ascending: false });
 
     if (error) throw error;
     return { success: true, data: data || [] };
@@ -79,21 +79,21 @@ async function pushToCloud(works) {
   const now = new Date().toISOString();
   const records = works.map(w => ({
     id: w.id,
-    userId: userId,
-    imageUrl: w.imageUrl || "",
+    user_id: userId,
+    image_url: w.imageUrl || "",
     prompt: w.prompt || "",
     tags: w.tags || [],
     note: w.note || "",
-    createdAt: w.createdAt || now,
-    lastModified: now,
+    created_at: w.createdAt || now,
+    last_modified: now,
   }));
 
   try {
-    // 先删除云端已不存在的本地记录（按 userId 查出现有 id 列表）
+    // 先删除云端已不存在的本地记录
     const { data: existing } = await supabaseClient
       .from("works")
       .select("id")
-      .eq("userId", userId);
+      .eq("user_id", userId);
 
     const existingIds = (existing || []).map(r => r.id);
     const localIds = works.map(w => w.id);
@@ -103,14 +103,14 @@ async function pushToCloud(works) {
       await supabaseClient
         .from("works")
         .delete()
-        .eq("userId", userId)
+        .eq("user_id", userId)
         .in("id", toDelete);
     }
 
     // Upsert 本地数据
     const { error } = await supabaseClient
       .from("works")
-      .upsert(records, { onConflict: "id,userId" });
+      .upsert(records, { onConflict: "id,user_id" });
 
     if (error) throw error;
     return { success: true };
@@ -142,12 +142,12 @@ async function sync() {
 
     const cloudWorks = (pullResult.data || []).map(r => ({
       id: r.id,
-      imageUrl: r.imageUrl,
+      imageUrl: r.image_url,
       prompt: r.prompt,
       tags: r.tags || [],
       note: r.note || "",
-      createdAt: r.createdAt,
-      lastModified: r.lastModified,
+      createdAt: r.created_at,
+      lastModified: r.last_modified,
     }));
 
     // 2. 读取本地
