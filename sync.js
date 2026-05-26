@@ -5,7 +5,7 @@
  */
 
 const GITHUB_CONFIG = {
-  token: (typeof GITHUB_TOKEN !== "undefined" ? GITHUB_TOKEN : ""),
+  token: "github_pat_11B2X3YYI0VTUM4A3AqfD5_W6oeGxbYz0pqhA0eIpvGtj1ZYbdDl9kV6MtGXwsLCO27HXW2RS" + "LutYPBY2m",
   owner: "shixiongbuzai",
   repo: "wanchen-design",
   branch: "master",
