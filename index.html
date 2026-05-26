@@ -1,207 +1,203 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>万晨图影设计 — AI 图像服务</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的提示词库</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- 顶部导航栏 -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-left">
+      <h1 class="app-title">我的提示词库</h1>
+    </div>
+    <div class="nav-center">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="搜索提示词或标签..." autocomplete="off">
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="tag-filter-wrapper">
+        <button class="btn btn-outline" id="tagFilterBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+          </svg>
+          标签筛选
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tag-dropdown" id="tagDropdown"></div>
+      </div>
+      <button class="btn btn-icon" id="settingsBtn" title="数据管理">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path>
+        </svg>
+      </button>
+      <button class="btn btn-primary" id="addBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        添加新作品
+      </button>
+    </div>
+  </nav>
 
-<!-- ==================== 全局导航 ==================== -->
-<nav class="nav-bar" id="navBar">
-  <div class="nav-inner">
-    <a href="#home" class="nav-brand" data-nav="home">
-      <span class="brand-dot"></span>
-      <span class="brand-text">万晨图影设计</span>
-    </a>
-    <button class="hamburger" id="hamburgerBtn" aria-label="菜单">
-      <span></span><span></span><span></span>
-    </button>
-    <div class="nav-links" id="navLinks">
-      <a href="#home" class="nav-link active" data-nav="home">首页</a>
-      <a href="#portfolio" class="nav-link" data-nav="portfolio">案例作品集</a>
-      <a href="#home#services" class="nav-link" data-nav="services">服务</a>
-      <a href="#home#process" class="nav-link" data-nav="process">流程</a>
-      <a href="#home#contact" class="nav-cta">免费咨询</a>
-    </div>
-  </div>
-</nav>
-
-<!-- ==================== 首页视图 ==================== -->
-<main id="view-home" class="view active">
-
-  <!-- 英雄区 -->
-  <section class="hero">
-    <div class="hero-orb orb-purple"></div>
-    <div class="hero-orb orb-indigo"></div>
-    <div class="hero-orb orb-gold"></div>
-    <div class="hero-content">
-      <div class="hero-badge">
-        <span class="badge-dot"></span> AI 图像服务 · 为需求精准生成
-      </div>
-      <h1 class="hero-title">你描述，我生成。</h1>
-      <p class="hero-subtitle">万晨图影设计，专注为企业与创作者提供高品质 AI 图像生成服务。<br>从电商产品到游戏概念，从出版插画到空间可视化，精准匹配你的需求。</p>
-      <div class="hero-buttons">
-        <a href="#portfolio" class="btn btn-primary">查看案例</a>
-        <a href="#home#contact" class="btn btn-outline">免费咨询</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- 客户类型卡片 -->
-  <section class="section" id="services">
-    <div class="section-header">
-      <h2 class="section-title">为谁而生</h2>
-      <p class="section-desc">覆盖四大行业场景，精准匹配你的业务需求</p>
-    </div>
-    <div class="client-cards">
-      <div class="client-card" data-industry="电商品牌">
-        <div class="card-icon">&#128722;</div>
-        <h3>电商品牌</h3>
-        <p>产品渲染、场景合成、模特换装，助力电商视觉升级</p>
-        <span class="card-arrow">查看案例 &rarr;</span>
-      </div>
-      <div class="client-card" data-industry="游戏影视">
-        <div class="card-icon">&#127918;</div>
-        <h3>游戏影视</h3>
-        <p>概念设定、角色设计、氛围图，加速创意落地</p>
-        <span class="card-arrow">查看案例 &rarr;</span>
-      </div>
-      <div class="client-card" data-industry="出版文创">
-        <div class="card-icon">&#128218;</div>
-        <h3>出版文创</h3>
-        <p>艺术风格化、插画生成、封面设计，释放创作灵感</p>
-        <span class="card-arrow">查看案例 &rarr;</span>
-      </div>
-      <div class="client-card" data-industry="空间建筑">
-        <div class="card-icon">&#127963;</div>
-        <h3>空间建筑</h3>
-        <p>室内渲染、建筑可视化、景观概念，所见即所得</p>
-        <span class="card-arrow">查看案例 &rarr;</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- 精选案例 -->
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title">精选案例</h2>
-      <p class="section-desc">来自真实客户的 AI 图像交付成果</p>
-    </div>
-    <div class="featured-grid" id="featuredGrid"></div>
-    <div class="section-footer">
-      <a href="#portfolio" class="btn btn-outline">查看全部案例 &rarr;</a>
-    </div>
-  </section>
-
-  <!-- 流程极简条 -->
-  <section class="section" id="process">
-    <div class="section-header">
-      <h2 class="section-title">合作流程</h2>
-      <p class="section-desc">三步完成从需求到交付</p>
-    </div>
-    <div class="process-steps">
-      <div class="process-step">
-        <div class="step-number">01</div>
-        <h4>需求沟通</h4>
-        <p>描述你的想法与参考风格</p>
-      </div>
-      <div class="process-step">
-        <div class="step-number">02</div>
-        <h4>AI 生成与精修</h4>
-        <p>多轮迭代直至满意</p>
-      </div>
-      <div class="process-step">
-        <div class="step-number">03</div>
-        <h4>交付成品</h4>
-        <p>高清原图，多种规格</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 页脚 -->
-  <footer class="footer" id="contact">
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <span class="brand-dot"></span> 万晨图影设计
-      </div>
-      <p class="footer-desc">AI 图像服务 · 为需求精准生成</p>
-      <div class="footer-contact">
-        <span>咨询邮箱：contact@wanchen.design</span>
-        <span>微信：WanChenDesign</span>
-      </div>
-      <p class="footer-copy">&copy; 2026 万晨图影设计. All rights reserved.</p>
-    </div>
-  </footer>
-</main>
-
-<!-- ==================== 案例作品集视图 ==================== -->
-<main id="view-portfolio" class="view">
-  <section class="section portfolio-section">
-    <div class="section-header">
-      <h2 class="section-title">案例作品集</h2>
-      <p class="section-desc">浏览全部 AI 图像交付案例</p>
-    </div>
-
-    <!-- 筛选标签 -->
-    <div class="filter-group">
-      <div class="filter-label">行业</div>
-      <div class="filter-tags" id="filterIndustry">
-        <button class="filter-tag active" data-value="all">全部</button>
-        <button class="filter-tag" data-value="电商品牌">电商品牌</button>
-        <button class="filter-tag" data-value="游戏影视">游戏影视</button>
-        <button class="filter-tag" data-value="出版文创">出版文创</button>
-        <button class="filter-tag" data-value="空间建筑">空间建筑</button>
-      </div>
-    </div>
-    <div class="filter-group">
-      <div class="filter-label">需求类型</div>
-      <div class="filter-tags" id="filterType">
-        <button class="filter-tag active" data-value="all">全部</button>
-        <button class="filter-tag" data-value="产品渲染">产品渲染</button>
-        <button class="filter-tag" data-value="概念设定">概念设定</button>
-        <button class="filter-tag" data-value="艺术风格化">艺术风格化</button>
-        <button class="filter-tag" data-value="场景合成">场景合成</button>
-        <button class="filter-tag" data-value="角色设计">角色设计</button>
-      </div>
-    </div>
-
-    <!-- 案例网格 -->
-    <div class="portfolio-grid" id="portfolioGrid"></div>
+  <!-- 主画廊区 -->
+  <main class="gallery-container" id="galleryContainer">
+    <div class="gallery" id="gallery"></div>
     <div class="empty-state" id="emptyState" style="display:none;">
-      <p>没有匹配的案例，请调整筛选条件</p>
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--text-secondary)" stroke-width="1">
+        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <p>还没有作品，点击上方按钮添加</p>
     </div>
-  </section>
-</main>
+  </main>
 
-<!-- ==================== 案例详情视图 ==================== -->
-<main id="view-detail" class="view">
-  <div class="detail-back">
-    <a href="#portfolio" class="back-link">&larr; 返回作品集</a>
-  </div>
-  <div id="detailContent"></div>
-</main>
-
-<!-- ==================== 全屏灯箱 ==================== -->
-<div class="lightbox" id="lightbox">
-  <div class="lightbox-overlay"></div>
-  <div class="lightbox-content">
-    <img id="lightboxImg" src="" alt="">
-    <div class="lightbox-controls">
-      <span class="lightbox-title" id="lightboxTitle"></span>
-      <span class="lightbox-counter" id="lightboxCounter"></span>
-      <a class="lightbox-download" id="lightboxDownload" href="" download>下载</a>
-      <button class="lightbox-close" id="lightboxClose">&times;</button>
+  <!-- 作品详情模态框 -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-detail">
+      <button class="modal-close" id="detailClose">&times;</button>
+      <div class="detail-content">
+        <div class="detail-image-col">
+          <img id="detailImage" src="" alt="作品图片">
+        </div>
+        <div class="detail-info-col">
+          <div class="detail-tags" id="detailTags"></div>
+          <div class="detail-prompt-card">
+            <h3>提示词</h3>
+            <pre id="detailPrompt"></pre>
+            <button class="btn btn-primary btn-copy-prompt" id="detailCopyBtn">一键复制</button>
+          </div>
+          <div class="detail-image-url">
+            <details>
+              <summary>图片链接</summary>
+              <code id="detailImageUrl"></code>
+            </details>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-outline" id="detailEditBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              编辑
+            </button>
+            <button class="btn btn-danger" id="detailDeleteBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+              </svg>
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-    <button class="lightbox-prev" id="lightboxPrev">&lsaquo;</button>
-    <button class="lightbox-next" id="lightboxNext">&rsaquo;</button>
   </div>
-</div>
 
-<script src="app.js"></script>
+  <!-- 添加/编辑作品表单模态框 -->
+  <div class="modal-overlay" id="formModal">
+    <div class="modal-form">
+      <button class="modal-close" id="formClose">&times;</button>
+      <h2 id="formTitle">添加作品</h2>
+      <form id="workForm">
+        <div class="form-group">
+          <label for="imageUrl">图片链接</label>
+          <input type="text" id="imageUrl" placeholder="https://... 或 本地路径" required>
+          <div class="image-preview" id="imagePreview" style="display:none;">
+            <img id="previewImg" src="" alt="预览">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="prompt">提示词</label>
+          <textarea id="prompt" rows="5" placeholder="输入提示词..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="tags">标签（逗号分隔）</label>
+          <input type="text" id="tags" placeholder="赛博朋克, 风景, 人物...">
+          <div class="tag-suggestions" id="tagSuggestions"></div>
+        </div>
+        <div class="form-group">
+          <label for="note">备注（可选）</label>
+          <textarea id="note" rows="3" placeholder="添加备注..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="formSubmitBtn">保存</button>
+          <button type="button" class="btn btn-outline" id="formCancelBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 设置与数据管理面板（右侧滑出抽屉） -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <h2>数据管理</h2>
+      <button class="modal-close" id="settingsClose">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>导出数据</h4>
+          <p>将所有作品导出为 JSON 文件</p>
+        </div>
+        <button class="btn btn-outline" id="exportBtn">导出</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>导入数据</h4>
+          <p>从 JSON 文件导入，将覆盖现有数据</p>
+        </div>
+        <button class="btn btn-outline" id="importBtn">导入</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>重置为示例数据</h4>
+          <p>清除所有数据，恢复为默认示例</p>
+        </div>
+        <button class="btn btn-outline btn-warning" id="resetBtn">重置</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>暗黑模式</h4>
+          <p>切换浅色/深色主题</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>存储统计</h4>
+          <p id="storageStats">-- 作品 | 占用 --</p>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>隐私说明</h4>
+          <p>所有数据仅存储在您的浏览器本地（localStorage），不会上传至任何服务器。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示组件 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
 </body>
 </html>
