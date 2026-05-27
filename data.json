@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1716739200000,
+    "imageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=400&fit=crop",
+    "prompt": "Professional portrait of a woman in her 30s, soft studio lighting, shallow depth of field, bokeh background, wearing elegant casual attire, natural smile, fashion magazine quality, shot on 85mm prime lens, f/1.4",
+    "tags": [
+      "人物",
+      "肖像",
+      "摄影"
+    ],
+    "note": "适用于 Stable Diffusion 的人物肖像生成，浅景深效果突出",
+    "createdAt": "2024-05-26T12:00:00.000Z",
+    "lastModified": "2024-05-26T12:00:00.000Z"
+  },
+  {
+    "id": 1716825600000,
+    "imageUrl": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop",
+    "prompt": "Futuristic laptop on a clean white desk with minimal desk setup, screen displaying holographic UI interface, soft ambient lighting, product photography, clean composition, 4K resolution, Apple-style commercial aesthetic",
+    "tags": [
+      "产品",
+      "科技",
+      "极简"
+    ],
+    "note": "电商产品图风格，纯白背景 + 柔和光源",
+    "createdAt": "2024-05-27T12:00:00.000Z",
+    "lastModified": "2024-05-27T12:00:00.000Z"
+  },
+  {
+    "id": 1716566400000,
+    "imageUrl": "https://images.unsplash.com/photo-1534972195531-d756b9bfa9f2?w=600&h=400&fit=crop",
+    "prompt": "A breathtaking futuristic cyberpunk city at night, neon lights reflecting on wet streets, flying cars cruising between towering skyscrapers, photo-realistic, 8K ultra HD, cinematic lighting, volumetric fog, ray tracing, highly detailed",
+    "tags": [
+      "赛博朋克",
+      "夜景",
+      "未来城市"
+    ],
+    "note": "适合做科幻主题壁纸，搭配霓虹色调效果更佳",
+    "createdAt": "2024-05-24T12:00:00.000Z",
+    "lastModified": "2024-05-24T12:00:00.000Z"
+  },
+  {
+    "id": 1716652800000,
+    "imageUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
+    "prompt": "Epic mountain landscape at golden hour, majestic peaks with snow caps, crystal clear lake reflecting the mountains, warm sunlight rays breaking through clouds, National Geographic style, award-winning nature photography",
+    "tags": [
+      "风景",
+      "自然",
+      "山"
+    ],
+    "note": "强调黄金时段的暖色调，适合风景类生成",
+    "createdAt": "2024-05-25T12:00:00.000Z",
+    "lastModified": "2024-05-25T12:00:00.000Z"
+  },
+  {
+    "id": 1716912000000,
+    "imageUrl": "https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=600&h=400&fit=crop",
+    "prompt": "Modern architectural marvel, sweeping curves of a futuristic museum, glass and steel structure, sunset sky with dramatic clouds, architectural photography, symmetry, leading lines, ultra-wide angle lens, HDR",
+    "tags": [
+      "建筑",
+      "现代",
+      "设计"
+    ],
+    "note": "建筑摄影类，强调几何线条与光影对比",
+    "createdAt": "2024-05-28T12:00:00.000Z",
+    "lastModified": "2024-05-28T12:00:00.000Z"
+  }
+]

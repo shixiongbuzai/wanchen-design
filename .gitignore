@@ -1,0 +1,6 @@
+# Supabase 密钥（不要提交）
+config.js
+
+# 系统文件
+.DS_Store
+Thumbs.db

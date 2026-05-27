@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的提示词库</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-left">
+      <h1 class="app-title">我的提示词库</h1>
+    </div>
+    <div class="nav-center">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="搜索提示词或标签..." autocomplete="off">
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="tag-filter-wrapper">
+        <button class="btn btn-outline" id="tagFilterBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+          </svg>
+          标签筛选
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tag-dropdown" id="tagDropdown"></div>
+      </div>
+      <button class="btn btn-icon sync-status" id="syncStatusBtn" title="同步状态">
+        <svg id="syncIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"/>
+          <path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+      </button>
+      <button class="btn btn-icon" id="settingsBtn" title="数据管理">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path>
+        </svg>
+      </button>
+      <button class="btn btn-primary" id="addBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        添加新作品
+      </button>
+    </div>
+  </nav>
+
+  <!-- 主画廊区 -->
+  <main class="gallery-container" id="galleryContainer">
+    <div class="gallery" id="gallery"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--text-secondary)" stroke-width="1">
+        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <p>还没有作品，点击上方按钮添加</p>
+    </div>
+  </main>
+
+  <!-- 作品详情模态框 -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-detail">
+      <button class="modal-close" id="detailClose">&times;</button>
+      <div class="detail-content">
+        <div class="detail-image-col">
+          <img id="detailImage" src="" alt="作品图片">
+        </div>
+        <div class="detail-info-col">
+          <div class="detail-tags" id="detailTags"></div>
+          <div class="detail-prompt-card">
+            <h3>提示词</h3>
+            <pre id="detailPrompt"></pre>
+            <button class="btn btn-primary btn-copy-prompt" id="detailCopyBtn">一键复制</button>
+          </div>
+          <div class="detail-image-url">
+            <details>
+              <summary>图片链接</summary>
+              <code id="detailImageUrl"></code>
+            </details>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-outline" id="detailEditBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              编辑
+            </button>
+            <button class="btn btn-danger" id="detailDeleteBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+              </svg>
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加/编辑作品表单模态框 -->
+  <div class="modal-overlay" id="formModal">
+    <div class="modal-form">
+      <button class="modal-close" id="formClose">&times;</button>
+      <h2 id="formTitle">添加作品</h2>
+      <form id="workForm">
+        <div class="form-group form-group-image-upload">
+          <label for="imageFileInput">上传图片（可选）</label>
+          <input type="file" id="imageFileInput" accept="image/*">
+          <p class="form-hint">选择后将自动上传到仓库，优先使用上传的图片</p>
+        </div>
+        <div class="form-group form-group-image-url">
+          <label for="imageUrl">或填写图片链接</label>
+          <input type="text" id="imageUrl" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <img id="imagePreview" src="" alt="预览" style="max-width:300px; border-radius:8px; display:none;">
+        </div>
+        <div class="form-group">
+          <label for="prompt">提示词</label>
+          <textarea id="prompt" rows="5" placeholder="输入提示词..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="tags">标签（逗号分隔）</label>
+          <input type="text" id="tags" placeholder="赛博朋克, 风景, 人物...">
+          <div class="tag-suggestions" id="tagSuggestions"></div>
+        </div>
+        <div class="form-group">
+          <label for="note">备注（可选）</label>
+          <textarea id="note" rows="3" placeholder="添加备注..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="formSubmitBtn">保存</button>
+          <button type="button" class="btn btn-outline" id="formCancelBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 设置与数据管理面板（右侧滑出抽屉） -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <h2>数据管理</h2>
+      <button class="modal-close" id="settingsClose">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>导出数据</h4>
+          <p>将所有作品导出为 JSON 文件</p>
+        </div>
+        <button class="btn btn-outline" id="exportBtn">导出</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>导入数据</h4>
+          <p>从 JSON 文件导入，将覆盖现有数据</p>
+        </div>
+        <button class="btn btn-outline" id="importBtn">导入</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>重置为示例数据</h4>
+          <p>清除所有数据，恢复为默认示例</p>
+        </div>
+        <button class="btn btn-outline btn-warning" id="resetBtn">重置</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>暗黑模式</h4>
+          <p>切换浅色/深色主题</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>存储统计</h4>
+          <p id="storageStats">-- 作品 | 占用 --</p>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <h4>隐私说明</h4>
+          <p>所有数据存储在您的浏览器本地（localStorage），并通过 GitHub 仓库实现跨设备同步。</p>
+        </div>
+      </div>
+      <div class="settings-section-divider">
+        <h3>账户与同步</h3>
+      </div>
+      <div class="setting-item" id="accountStatus">
+        <div class="setting-info">
+          <h4>登录状态</h4>
+          <p id="accountStatusText">未登录 — 同步功能不可用</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示组件 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 登录模态框（全屏遮罩，不可跳过） -->
+  <div class="modal-overlay login-overlay" id="loginModal">
+    <div class="modal-form login-form">
+      <h2>我的提示词库</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername">用户名</label>
+          <input type="text" id="loginUsername" placeholder="输入用户名" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">密码</label>
+          <input type="password" id="loginPassword" placeholder="输入密码" required autocomplete="current-password">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">登录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
